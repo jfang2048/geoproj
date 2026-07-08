@@ -1,0 +1,28 @@
+# Conda environment for Lake Varese / Monte Martica project
+# Export of: geoproject-auto
+# Generated: 2026-05-25
+name: geoproject-auto
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - geopandas
+  - rasterio
+  - rioxarray
+  - xarray
+  - netcdf4
+  - shapely
+  - pyproj
+  - fiona
+  - gdal
+  - pandas
+  - numpy
+  - matplotlib
+  - contextily
+  - pyyaml
+  - whitebox
+  - pytest
+  - pillow
+  - streamlit
+  - plotly
