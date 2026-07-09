@@ -9,7 +9,7 @@ the web interface.
 ```bash
 conda env create -f environment.yml
 conda activate geoproject
-streamlit run postfire_runoff/webapp/app.py --server.headless true --server.port 8501
+streamlit run postfire_runoff/frontend/app.py --server.headless true --server.port 8501
 ```
 
 Open `http://localhost:8501`.

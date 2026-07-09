@@ -1,9 +1,9 @@
 """Test upload validation, path safety, and content inspection."""
 import pytest
-from postfire_runoff.io.safe_files import sanitize_filename
-from postfire_runoff.io.checksums import sha256_hex
-from postfire_runoff.gis.raster_validation import inspect_raster, RasterInfo
-from postfire_runoff.gis.vector_validation import inspect_vector, VectorInfo
+from postfire_runoff.backend.io.safe_files import sanitize_filename
+from postfire_runoff.backend.io.checksums import sha256_hex
+from postfire_runoff.backend.gis.raster_validation import inspect_raster, RasterInfo
+from postfire_runoff.backend.gis.vector_validation import inspect_vector, VectorInfo
 
 
 class TestSafeFilename:

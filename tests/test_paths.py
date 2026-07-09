@@ -1,6 +1,6 @@
 """Test project-root path resolution."""
 from pathlib import Path
-from postfire_runoff.io.paths import project_root
+from postfire_runoff.backend.io.paths import project_root
 
 
 def test_project_root_exists():

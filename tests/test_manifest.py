@@ -1,6 +1,6 @@
 """Test run manifest creation and writing."""
 import json
-from postfire_runoff.io.manifest import (
+from postfire_runoff.backend.io.manifest import (
     create_run_manifest, add_input, add_output,
     add_warning, add_error, set_succeeded,
 )

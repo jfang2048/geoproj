@@ -1,7 +1,7 @@
 """Test the SCS-CN runoff formula."""
 import numpy as np
 import pytest
-from postfire_runoff.hydrology.scs_cn import scs_runoff_mm, burned_cn
+from postfire_runoff.backend.hydrology.scs_cn import scs_runoff_mm, burned_cn
 
 
 class TestSCSRunoff:
