@@ -1,40 +1,31 @@
 # Web GIS runoff screening tool
 
-This repository contains a standalone Web GIS application for post-fire runoff screening over a burned catchment. The application uses browser upload as the primary data input workflow. Manual folder placement is secondary and is intended for recovery or controlled test setup only.
+A standalone Web GIS application for post-fire runoff screening over a burned catchment.
 
-The tool validates GIS and rainfall inputs, stores accepted files under an isolated run directory, runs preprocessing and a screening-level SCS-CN runoff calculation, and displays generated layers on a browser map.
+The normal workflow is browser upload. Manual file placement is secondary and should be used only for recovery or controlled local setup.
 
-This is not a calibrated hydrologic model. Outputs are screening-level unless a calibrated model and verified local parameters are added.
+![Web GIS upload workflow](screenshots/webgis-upload-workflow.png)
 
-## What the tool does
+## What this tool does
 
-- Upload GIS and rainfall files through the browser.
+- Upload DEM, vector, raster, and rainfall files through the browser.
 - Validate CRS, geometry, raster metadata, rainfall columns, and archive safety before accepting files.
-- Store accepted files under `runs/<run_id>/inputs/`.
+- Store accepted files under an isolated `runs/<run_id>/inputs/` directory.
 - Normalize spatial inputs to EPSG:32632 for analysis.
-- Use EPSG:4326 display layers only for the browser map.
-- Run a documented SCS-CN event runoff calculation.
-- Write tables, display layers, QA files, a run report, and `run_manifest.json`.
+- Write browser display layers in EPSG:4326.
+- Run a documented screening-level SCS-CN event runoff calculation.
+- Write tables, map layers, QA files, a run report, and `run_manifest.json`.
 
-## What the tool does not do
+## What this tool does not do
 
 - It does not forecast discharge.
 - It does not replace field-validated burn severity, soil, or hydrologic calibration.
 - It does not fabricate production input data when required files are missing.
 - It does not use GitHub Actions or workflow files.
 
-## Repository layout
+## Quick start
 
-```text
-backend/      FastAPI application and GIS processing services
-frontend/     React + Vite browser application with Leaflet map
-docs/         User and operator documentation
-sample_data/  Small sample-data generator for local checks
-tests/        Pytest tests for backend validation and model logic
-runs/         Local run storage; generated at runtime
-```
-
-## Run the backend
+### Backend
 
 Use Python 3.11 or newer with GDAL-compatible wheels or a conda environment.
 
@@ -46,13 +37,13 @@ python -m pip install -e '.[test]'
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-The API health check is available at:
+Health check:
 
 ```text
 http://127.0.0.1:8000/api/health
 ```
 
-## Run the frontend
+### Frontend
 
 ```bash
 cd frontend
@@ -68,29 +59,26 @@ http://127.0.0.1:5173
 
 The Vite development server proxies `/api` requests to `http://127.0.0.1:8000`.
 
-## Upload-first workflow
+## Browser workflow
 
-1. Open the web app.
-2. Create a run or select an existing run.
-3. Upload each required file through **Upload data**.
-4. Review **Validation status**.
-5. Run **Run preprocessing**.
-6. Run **Run runoff model**.
-7. Inspect generated layers in **Map viewer**.
-8. Download outputs and read the run report.
+1. Create or select a run.
+2. Upload each required file in **Upload data**.
+3. Check **Validation status**.
+4. Run **Run preprocessing**.
+5. Run **Run runoff model**.
+6. Inspect generated layers in **Map viewer**.
+7. Download outputs and read the run report.
 
-Required production inputs are DEM, fire perimeter or burned area, burn severity, land cover, hydrologic soil group, and rainfall events. HSG may be supplied by an explicit per-run fallback only when the user chooses it; the fallback is recorded in the manifest and report.
+Required production inputs:
 
-## Run tests locally
+- DEM raster
+- fire perimeter or burned area
+- burn severity
+- land cover
+- hydrologic soil group
+- rainfall event CSV
 
-```bash
-cd backend
-source .venv/bin/activate
-cd ..
-pytest
-```
-
-Raster tests require `rasterio`. If rasterio is not installed, those tests are skipped by pytest.
+HSG may be supplied by an explicit per-run fallback only when the user chooses it. The chosen fallback is recorded in the manifest and report.
 
 ## Runtime storage
 
@@ -107,3 +95,32 @@ runs/<run_id>/
 ```
 
 `run_manifest.json` records input filenames, checksums, CRS, raster resolution, bounds, NoData, selected parameters, generated outputs, output checksums, warnings, and fatal errors.
+
+## Repository layout
+
+```text
+backend/      FastAPI application and GIS processing services
+frontend/     React + Vite browser application with Leaflet map
+docs/         User and operator documentation
+sample_data/  Small sample-data generator for local checks
+tests/        Pytest tests for backend validation and model logic
+runs/         Local run storage; generated at runtime
+```
+
+## Local tests
+
+```bash
+cd backend
+source .venv/bin/activate
+cd ..
+pytest
+```
+
+Raster tests require `rasterio`.
+
+## Documentation
+
+- `docs/USER_MANUAL.md`: browser workflow
+- `docs/DATA_REQUIREMENTS.md`: required files, formats, CRS rules, CSV columns
+- `docs/OUTPUTS.md`: output files, units, interpretation limits
+- `docs/RUNBOOK.md`: troubleshooting and recovery
