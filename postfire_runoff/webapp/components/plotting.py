@@ -9,7 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-from geoproject.webapp.components.paths import ROOT, TABLES, LATEX
+from postfire_runoff.webapp.components.paths import ROOT, TABLES, LATEX
 
 
 # ---------------------------------------------------------------------------

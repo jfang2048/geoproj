@@ -5,7 +5,7 @@ import csv
 from datetime import datetime, timezone
 from pathlib import Path
 
-from geoproject.webapp.components.paths import WEBAPP, WEBAPP_UPLOAD_MANIFEST
+from postfire_runoff.webapp.components.paths import WEBAPP, WEBAPP_UPLOAD_MANIFEST
 
 MANIFEST_COLUMNS = [
     "timestamp",

@@ -11,7 +11,7 @@ import rasterio
 from rasterio.features import shapes
 from shapely.geometry import shape
 
-from geoproject.webapp.components.paths import ROOT, TABLES, DATA_PROCESSED, QA_SPATIAL, LATEX
+from postfire_runoff.webapp.components.paths import ROOT, TABLES, DATA_PROCESSED, QA_SPATIAL, LATEX
 
 # ── CSV table paths ──────────────────────────────────────────────────────
 RUNOFF_DELTA = TABLES / "runoff_delta_by_event.csv"

@@ -9,7 +9,7 @@ the web interface.
 ```bash
 conda env create -f environment.yml
 conda activate geoproject
-streamlit run geoproject/webapp/app.py --server.headless true --server.port 8501
+streamlit run postfire_runoff/webapp/app.py --server.headless true --server.port 8501
 ```
 
 Open `http://localhost:8501`.
@@ -49,8 +49,8 @@ The tool expects:
 After uploading, run the pipeline from the **Model** tab or the command line:
 
 ```bash
-python -m geoproject.cli.run_pipeline
-python -m geoproject.cli.run_lake_wq
+python -m postfire_runoff.cli.run_pipeline
+python -m postfire_runoff.cli.run_lake_wq
 ```
 
 ## Parameters are adjustable in the browser

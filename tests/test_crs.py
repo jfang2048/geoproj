@@ -1,7 +1,7 @@
 """Test CRS policy enforcement."""
 import pytest
 from pyproj import CRS
-from geoproject.gis.crs import (
+from postfire_runoff.gis.crs import (
     METRIC_CRS, WEB_CRS, FORBIDDEN_DEGREE_OPERATIONS,
     assert_not_degree_crs, require_crs,
 )

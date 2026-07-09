@@ -10,16 +10,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from geoproject.webapp.components.paths import ROOT, WEBAPP_RUN_LOGS
+from postfire_runoff.webapp.components.paths import ROOT, WEBAPP_RUN_LOGS
 
 COMMAND_SPECS: dict[str, dict] = {
     "Run pipeline": {
         "args": [sys.executable, "-m", "geoproject.cli.run_pipeline"],
-        "verify": [ROOT / "geoproject/cli/run_pipeline.py"],
+        "verify": [ROOT / "postfire_runoff/cli/run_pipeline.py"],
     },
     "Run lake WQ compute": {
         "args": [sys.executable, "-m", "geoproject.cli.run_lake_wq"],
-        "verify": [ROOT / "geoproject/cli/run_lake_wq.py"],
+        "verify": [ROOT / "postfire_runoff/cli/run_lake_wq.py"],
     },
     "Run minimal tests": {
         "args": [sys.executable, "-m", "pytest", "-q"],

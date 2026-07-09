@@ -11,14 +11,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[4]
 
 DATA_RAW = ROOT / "data/raw"
-SCRIPTS = ROOT / "geoproject/cli"
+SCRIPTS = ROOT / "postfire_runoff/cli"
 DATA_RAW_ZIP = ROOT / "data/raw/zip"
 DATA_PROCESSED = ROOT / "data/processed"
 OUTPUTS = ROOT / "outputs"
 TABLES = ROOT / "outputs/tables"
 LATEX = ROOT / "latex"
 QA_SPATIAL = ROOT / "qa/spatial"
-WEBAPP = ROOT / "geoproject/webapp"
+WEBAPP = ROOT / "postfire_runoff/webapp"
 WEBAPP_RUN_LOGS = WEBAPP / "run_logs"
 WEBAPP_UPLOAD_MANIFEST = WEBAPP / "upload_manifest.csv"
 WEBAPP_PARAMS = WEBAPP / "current_parameters.yaml"
@@ -40,7 +40,7 @@ REQUIRED_WEPPCLOUD = {
 }
 
 REQUIRED_LAKE_WQ = {
-    "Lake WQ runner": ROOT / "geoproject/cli/run_lake_wq.py",
+    "Lake WQ runner": ROOT / "postfire_runoff/cli/run_lake_wq.py",
     "Selected events": TABLES / "lake_response_selected_events.csv",
     "Lake WQ anomalies": TABLES / "lake_wq_event_anomalies.csv",
     "Lake WQ analytical context": TABLES / "lake_wq_analytical_context_by_period.csv",

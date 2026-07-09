@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-from geoproject.webapp.components.data_loaders import (
+from postfire_runoff.webapp.components.data_loaders import (
     load_csv_safe, RAINFALL_EVENTS, RUNOFF_DELTA, BURN_ENSEMBLE,
     LAKE_ANOMALIES, LAKE_SELECTED,
 )

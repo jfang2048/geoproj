@@ -29,30 +29,30 @@ st.set_page_config(
     layout="wide",
 )
 
-from geoproject.webapp.components.style import inject as inject_css
+from postfire_runoff.webapp.components.style import inject as inject_css
 
-from geoproject.webapp.components.data_loaders import (
+from postfire_runoff.webapp.components.data_loaders import (
     core_metrics, burn_class_table, load_csv_safe, load_vector_safe,
     RUNOFF_DELTA, RUNOFF_EVENTS, BURN_ENSEMBLE, BURN_AREA,
     LAKE_ANOMALIES, LAKE_SELECTED, LAKE_CONTEXT,
     CATCHMENT, FIRE_PERIMETER, HYDROGRAPHY, LAKE_BOUNDARY,
     RUNOFF_UNITS_GPKG, DEM_STREAMS, BURN_RASTER,
 )
-from geoproject.webapp.components.dynamic_maps import (
+from postfire_runoff.webapp.components.dynamic_maps import (
     catchment_layer, fire_perimeter_layer, lake_layer,
     hydrography_layer, dem_streams_layer, runoff_units_layer,
     outlet_point_layer, burn_raster_overlay,
 )
-from geoproject.webapp.components.dynamic_charts import (
+from postfire_runoff.webapp.components.dynamic_charts import (
     burn_footprint_runoff_chart, burn_footprint_area_chart,
     event_rainfall_scatter_chart, event_delta_cdf_chart,
     weppcloud_sediment_chart, lake_wq_status_figure, lake_wq_event_table,
 )
-from geoproject.webapp.components.scs_preview import preview_metrics, preview_curve
-from geoproject.webapp.components.validators import CATEGORY_RULES, validate_upload, accepted_extensions_for
-from geoproject.webapp.components.upload_registry import record_upload, read_manifest
-from geoproject.webapp.components.runner import available_commands, run_command
-from geoproject.webapp.components.paths import (
+from postfire_runoff.webapp.components.scs_preview import preview_metrics, preview_curve
+from postfire_runoff.webapp.components.validators import CATEGORY_RULES, validate_upload, accepted_extensions_for
+from postfire_runoff.webapp.components.upload_registry import record_upload, read_manifest
+from postfire_runoff.webapp.components.runner import available_commands, run_command
+from postfire_runoff.webapp.components.paths import (
     DATA_RAW_ZIP, WEPPCLOUD_DOWNLOAD, resolve_safe,
     REQUIRED_CORE, REQUIRED_WEPPCLOUD, REQUIRED_LAKE_WQ, REQUIRED_FIGURES,
     WORKFLOW_PNG, TABLES, LATEX, WEBAPP, ROOT as P_ROOTS,
@@ -600,7 +600,7 @@ elif nav == "Results":
 
         # Detected products
         with st.expander("Detected local Sentinel-2 products", expanded=False):
-            from geoproject.webapp.components.data_loaders import RAINFALL_EVENTS
+            from postfire_runoff.webapp.components.data_loaders import RAINFALL_EVENTS
             import re as _re
             zip_dir = ROOT / "data/raw/zip"
             prods = sorted(zip_dir.glob("*.SAFE.zip"))

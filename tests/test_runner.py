@@ -1,5 +1,5 @@
 """Test command runner availability detection."""
-from geoproject.webapp.components.runner import command_available, available_commands, COMMAND_SPECS
+from postfire_runoff.webapp.components.runner import command_available, available_commands, COMMAND_SPECS
 
 
 def test_command_specs_are_defined():

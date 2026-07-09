@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from geoproject.webapp.components.data_loaders import load_csv_safe, RUNOFF_UNITS, RAINFALL_EVENTS, RUNOFF_DELTA
+from postfire_runoff.webapp.components.data_loaders import load_csv_safe, RUNOFF_UNITS, RAINFALL_EVENTS, RUNOFF_DELTA
 
 
 def scs_runoff(precip_mm: np.ndarray, cn: np.ndarray, lam: float = 0.20) -> np.ndarray:

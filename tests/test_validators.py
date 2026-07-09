@@ -1,5 +1,5 @@
 """Test upload validation and content inspection."""
-from geoproject.webapp.components.validators import (
+from postfire_runoff.webapp.components.validators import (
     validate_upload, validate_raster_content, validate_vector_content,
     validate_rainfall_csv, _sanitize_filename,
 )

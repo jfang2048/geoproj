@@ -9,7 +9,7 @@ import geopandas as gpd
 import rasterio
 from rasterio.warp import transform_bounds
 
-from geoproject.webapp.components.data_loaders import (
+from postfire_runoff.webapp.components.data_loaders import (
     CATCHMENT, FIRE_PERIMETER, HYDROGRAPHY, LAKE_BOUNDARY,
     RUNOFF_UNITS_GPKG, DEM_STREAMS, BURN_RASTER, load_vector_safe,
 )
