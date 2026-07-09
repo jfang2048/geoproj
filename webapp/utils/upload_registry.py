@@ -13,6 +13,8 @@ MANIFEST_COLUMNS = [
     "original_filename",
     "saved_path",
     "file_size_bytes",
+    "checksum_sha256",
+    "validation_warnings",
     "status",
     "note",
 ]
@@ -33,6 +35,8 @@ def record_upload(
     file_size_bytes: int,
     status: str = "uploaded",
     note: str = "",
+    checksum: str = "",
+    warnings: str = "",
 ) -> None:
     _ensure_manifest()
     row = {
@@ -41,6 +45,8 @@ def record_upload(
         "original_filename": original_filename,
         "saved_path": str(saved_path),
         "file_size_bytes": str(file_size_bytes),
+        "checksum_sha256": checksum,
+        "validation_warnings": warnings,
         "status": status,
         "note": note,
     }

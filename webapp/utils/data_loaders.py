@@ -134,7 +134,7 @@ def core_metrics() -> dict[str, Any]:
             gdf_utm = gdf_utm.to_crs("EPSG:32632")
         metrics["catchment_area_ha"] = round(gdf_utm.geometry.area.sum() / 10000.0, 2)
     else:
-        metrics["catchment_area_ha"] = 1311.76
+        metrics["catchment_area_ha"] = None
 
     # Fire perimeter
     fire = load_vector_safe(FIRE_PERIMETER)
@@ -150,9 +150,9 @@ def core_metrics() -> dict[str, Any]:
             metrics["fire_inside_catchment_ha"] = round(fire_in, 2)
             metrics["fire_inside_pct"] = round(fire_in / metrics["fire_perimeter_ha"] * 100, 1)
     else:
-        metrics["fire_perimeter_ha"] = 376.25
-        metrics["fire_inside_catchment_ha"] = 280.14
-        metrics["fire_inside_pct"] = 74.5
+        metrics["fire_perimeter_ha"] = None
+        metrics["fire_inside_catchment_ha"] = None
+        metrics["fire_inside_pct"] = None
 
     # Burn ensemble
     ens = load_csv_safe(BURN_ENSEMBLE)
@@ -174,18 +174,18 @@ def core_metrics() -> dict[str, Any]:
                     metrics["upper_bound_max_dq_mm"] = float(row[runoff_col])
 
     if "conservative_burned_ha" not in metrics:
-        metrics["conservative_burned_ha"] = 23.80
-        metrics["conservative_max_dq_mm"] = 0.282
-        metrics["upper_bound_burned_ha"] = 280.76
-        metrics["upper_bound_max_dq_mm"] = 5.505
+        metrics["conservative_burned_ha"] = None
+        metrics["conservative_max_dq_mm"] = None
+        metrics["upper_bound_burned_ha"] = None
+        metrics["upper_bound_max_dq_mm"] = None
 
     # Rain events count
     rain = load_csv_safe(RAINFALL_EVENTS)
-    metrics["rainfall_event_count"] = len(rain) if rain is not None else 92
+    metrics["rainfall_event_count"] = len(rain) if rain is not None else None
 
     # Runoff units count
     ru = load_csv_safe(RUNOFF_UNITS)
-    metrics["response_unit_count"] = len(ru) if ru is not None else 11
+    metrics["response_unit_count"] = len(ru) if ru is not None else None
 
     # WEPPcloud (fixed from benchmark)
     metrics["wepp_sediment_undisturbed"] = 293.0

@@ -16,7 +16,10 @@ Open `http://localhost:8501`.
 
 ## Prepare your data
 
-Place input files under `data/raw/zip/` in your project directory. The tool expects:
+Use the **Data** tab in the web interface to upload project files through the browser.
+Manual placement under `data/raw/zip/` is available as a fallback for advanced use.
+
+The tool expects:
 
 | Dataset | Accepted formats | Notes |
 |---|---|---|
