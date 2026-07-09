@@ -1,28 +1,17 @@
-# Conda environment for Lake Varese / Monte Martica project
-# Export of: geoproject-auto
-# Generated: 2026-05-25
-name: geoproject-auto
+name: runoff-webgis
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - python=3.11
+  - fastapi
+  - uvicorn
+  - python-multipart
   - geopandas
   - rasterio
-  - rioxarray
-  - xarray
-  - netcdf4
+  - fiona
   - shapely
   - pyproj
-  - fiona
-  - gdal
   - pandas
   - numpy
-  - matplotlib
-  - contextily
-  - pyyaml
-  - whitebox
   - pytest
-  - pillow
-  - streamlit
-  - plotly
+  - nodejs

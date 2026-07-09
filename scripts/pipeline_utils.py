@@ -215,16 +215,16 @@ DEFAULT_PROJECT_CONFIG: dict[str, Any] = {
         "preferred_local_paths": ["DTM5_RL/DTM5_RL.img", "lombardia_dtm/"],
         "stream_threshold_cells": 1000,
         "fallback_resolution_m": 100,
-        "synthetic_fallback_allowed": True,
-        "synthetic_fallback_note": "Only keeps the pipeline executable; replace with official/local DEM before scientific interpretation.",
+        "synthetic_fallback_allowed": False,
+        "synthetic_fallback_note": "Disabled for production use. Upload a DEM through the Web GIS application.",
     },
     "landcover": {
         "simplified_classes": ["forest", "shrub", "grassland", "agriculture", "urban", "bare_soil", "water", "other"],
-        "fallback_note": "Synthetic land-cover zones are placeholders when DUSAF/CORINE/WorldCover are unavailable.",
+        "fallback_note": "Disabled for production use. Upload land cover through the Web GIS application.",
     },
     "soil": {
-        "fallback_hydrologic_soil_group": "C",
-        "fallback_note": "Simplified HSG placeholder pending EU soil hydraulic data or SoilGrids-derived classes.",
+        "fallback_hydrologic_soil_group": None,
+        "fallback_note": "No silent HSG fallback. Upload HSG or choose an explicit per-run fallback in the Web GIS application.",
     },
     "weather": {
         "event_start": "2019-01-01",

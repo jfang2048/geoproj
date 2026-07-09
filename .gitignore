@@ -28,3 +28,11 @@ __pycache__/
 webapp/run_logs/
 webapp/upload_manifest.csv
 webapp/current_parameters.yaml
+
+# Local Web GIS runtime and build artifacts
+runs/
+.venv/
+backend/.venv/
+frontend/node_modules/
+frontend/dist/
+sample_data/generated/

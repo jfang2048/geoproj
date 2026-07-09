@@ -1,128 +1,109 @@
-# GeoProject — Post-fire Runoff Screening Tool
+# Web GIS runoff screening tool
 
-A reproducible, screening-level GIS workflow for post-wildfire runoff sensitivity
-analysis. Provide your own input data, run the pipeline, and explore results through
-the web interface.
+This repository contains a standalone Web GIS application for post-fire runoff screening over a burned catchment. The application uses browser upload as the primary data input workflow. Manual folder placement is secondary and is intended for recovery or controlled test setup only.
 
-## Quick start
+The tool validates GIS and rainfall inputs, stores accepted files under an isolated run directory, runs preprocessing and a screening-level SCS-CN runoff calculation, and displays generated layers on a browser map.
 
-```bash
-conda env create -f environment.yml
-conda activate geoproject
-streamlit run webapp/app.py --server.headless true
+This is not a calibrated hydrologic model. Outputs are screening-level unless a calibrated model and verified local parameters are added.
+
+## What the tool does
+
+- Upload GIS and rainfall files through the browser.
+- Validate CRS, geometry, raster metadata, rainfall columns, and archive safety before accepting files.
+- Store accepted files under `runs/<run_id>/inputs/`.
+- Normalize spatial inputs to EPSG:32632 for analysis.
+- Use EPSG:4326 display layers only for the browser map.
+- Run a documented SCS-CN event runoff calculation.
+- Write tables, display layers, QA files, a run report, and `run_manifest.json`.
+
+## What the tool does not do
+
+- It does not forecast discharge.
+- It does not replace field-validated burn severity, soil, or hydrologic calibration.
+- It does not fabricate production input data when required files are missing.
+- It does not use GitHub Actions or workflow files.
+
+## Repository layout
+
+```text
+backend/      FastAPI application and GIS processing services
+frontend/     React + Vite browser application with Leaflet map
+docs/         User and operator documentation
+sample_data/  Small sample-data generator for local checks
+tests/        Pytest tests for backend validation and model logic
+runs/         Local run storage; generated at runtime
 ```
 
-Open `http://localhost:8501`.
+## Run the backend
 
-## How to prepare your data
-
-Place input files under `data/raw/zip/` in your project directory. The tool expects:
-
-| Dataset | Accepted formats | Notes |
-|---|---|---|
-| DEM / DTM | `.zip` (GeoTIFF or IMG inside) | Required for catchment delineation and hydrology |
-| Fire perimeter | `.zip`, `.gpkg`, `.shp` | Official burned area polygon for your study region |
-| Sentinel-2 L2A | `.SAFE.zip` | Must be L2A (MSIL2A), not L1C. Needed for dNBR burn proxy and lake water-quality indices |
-| Land cover | `.zip`, `.gpkg` | Vector land cover map, reclassified to hydrologic classes |
-| Soil / HSG | `.tif`, `.zip`, `.csv` | Hydrologic soil group or texture data for curve number assignment |
-| Rainfall | `.zip`, `.csv` | Hourly or daily precipitation time series |
-
-## How to upload data through the web interface
-
-1. Launch the web app and go to the **Data** tab.
-
-![Data page](screenshots/02_data.png)
-
-2. Select a data category from the dropdown (DEM, fire perimeter, Sentinel-2, land cover, soil, or rainfall).
-
-3. Click the file uploader to choose files from your computer. The tool accepts only the correct file extensions for each category.
-
-4. Click Upload. Files are saved into `data/raw/zip/` with no overwrite — if a file with the same name exists, a timestamp suffix is added.
-
-5. Switch to the **Required files** subtab to see which files are present and which are still missing.
-
-6. Switch to the **Detected products** subtab to verify your Sentinel-2 SAFE files are recognized with correct sensing dates.
-
-After uploading all required data, run the pipeline from the **Model** tab or the command line:
+Use Python 3.11 or newer with GDAL-compatible wheels or a conda environment.
 
 ```bash
-python scripts/run_pipeline.py
-python scripts/lake_wq/run_compute_lake_wq.py
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[test]'
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-## Web interface
+The API health check is available at:
 
-**Parameters are adjustable directly in the browser.** The Explorer tab lets you
-change SCS-CN initial abstraction ratio, burn severity CN adjustments, and footprint
-scenario with sliders. A live sensitivity preview chart updates immediately —
-no re-running the pipeline required. Presets can be saved and exported to the project
-configuration.
+```text
+http://127.0.0.1:8000/api/health
+```
 
-### Overview
+## Run the frontend
 
-![Overview](screenshots/01_overview.png)
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Landing page with metric cards populated from your pipeline outputs. A collapsed
-scientific guardrails section explains the limits of screening-level analysis.
+Open:
 
-### Data — upload and check
+```text
+http://127.0.0.1:5173
+```
 
-![Data page](screenshots/02_data.png)
+The Vite development server proxies `/api` requests to `http://127.0.0.1:8000`.
 
-Upload files, check what is present, and view detected Sentinel-2 products.
-The tool validates file extensions and rejects unexpected formats.
+## Upload-first workflow
 
-### Explorer — interactive map
+1. Open the web app.
+2. Create a run or select an existing run.
+3. Upload each required file through **Upload data**.
+4. Review **Validation status**.
+5. Run **Run preprocessing**.
+6. Run **Run runoff model**.
+7. Inspect generated layers in **Map viewer**.
+8. Download outputs and read the run report.
 
-![Explorer map](screenshots/03_explorer_map.png)
+Required production inputs are DEM, fire perimeter or burned area, burn severity, land cover, hydrologic soil group, and rainfall events. HSG may be supplied by an explicit per-run fallback only when the user chooses it; the fallback is recorded in the manifest and report.
 
-pydeck map with toggleable vector layers (catchment, fire perimeter, lake boundary,
-hydrography, DEM streams, response units, outlet). A layer status line shows which
-files are loaded and which are missing. The basemap always renders even without data.
+## Run tests locally
 
-### Explorer — parameter sensitivity
+```bash
+cd backend
+source .venv/bin/activate
+cd ..
+pytest
+```
 
-![Explorer parameters](screenshots/04_explorer_params.png)
+Raster tests require `rasterio`. If rasterio is not installed, those tests are skipped by pytest.
 
-Move the sliders and the preview chart updates instantly. No need to re-run the
-pipeline. Adjust initial abstraction ratio, burn severity CN adjustments, and
-footprint scenario. Preview is in-memory only — official outputs are never
-overwritten unless you explicitly export to the project config.
+## Runtime storage
 
-### Results — runoff and WEPPcloud
+Every run writes:
 
-![Results](screenshots/05_results.png)
+```text
+runs/<run_id>/
+  inputs/
+  normalized/
+  outputs/
+  logs/
+  reports/
+  run_manifest.json
+```
 
-Runoff delta tables, event scatter and CDF charts, burn footprint vs runoff response
-bar chart, and WEPPcloud sediment benchmark. WEPPcloud is an independent benchmark,
-not validation of the local SCS-CN model.
-
-### Results — lake water quality
-
-![Lake WQ](screenshots/06_lake_wq.png)
-
-Lake water-quality closure status. Shows which runoff events have pre-window and
-post-window Sentinel-2 scenes available. If local SAFE coverage is insufficient,
-reports `MISSING_LOCAL_IMAGE` rather than generating fake data.
-
-## Scientific guardrails
-
-- All runoff outputs are screening-level, uncalibrated scenario estimates.
-- dNBR is a remote-sensing burn-severity proxy, not field-validated soil burn severity.
-- WEPPcloud is an independent benchmark, not validation of the local SCS-CN model.
-- Lake water-quality indices (NDTI, NDCI) are screening-level optical proxies.
-- NDTI is the primary turbidity proxy; NDCI is secondary and indirect.
-- The tool uses local input files only. No external cloud services are called.
-
-## Documentation
-
-| Document | Purpose |
-|---|---|
-| `docs/USER_MANUAL.md` | Full setup and workflow guide |
-| `docs/DATA_REQUIREMENTS.md` | Required input data and formats |
-| `docs/WEB_INTERFACE.md` | Web app screenshots and navigation |
-| `docs/TROUBLESHOOTING.md` | Common problems and solutions |
-
-## License
-
-GPLv3. See [LICENSE](LICENSE).
+`run_manifest.json` records input filenames, checksums, CRS, raster resolution, bounds, NoData, selected parameters, generated outputs, output checksums, warnings, and fatal errors.

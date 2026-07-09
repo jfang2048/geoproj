@@ -69,9 +69,8 @@ dem:
   - lombardia_dtm/
   stream_threshold_cells: 1000
   fallback_resolution_m: 100
-  synthetic_fallback_allowed: true
-  synthetic_fallback_note: Only keeps the pipeline executable; replace with official/local
-    DEM before scientific interpretation.
+  synthetic_fallback_allowed: false
+  synthetic_fallback_note: Disabled for production use. Upload a DEM through the Web GIS application.
 landcover:
   simplified_classes:
   - forest
@@ -82,12 +81,10 @@ landcover:
   - bare_soil
   - water
   - other
-  fallback_note: Synthetic land-cover zones are placeholders when DUSAF/CORINE/WorldCover
-    are unavailable.
+  fallback_note: Disabled for production use. Upload land cover through the Web GIS application.
 soil:
-  fallback_hydrologic_soil_group: C
-  fallback_note: Simplified HSG placeholder pending EU soil hydraulic data or SoilGrids-derived
-    classes.
+  fallback_hydrologic_soil_group: null
+  fallback_note: No silent HSG fallback. Upload HSG or choose an explicit per-run fallback in the Web GIS application.
 weather:
   event_start: '2019-01-01'
   event_end: '2020-12-31'
