@@ -14,6 +14,18 @@ streamlit run postfire_runoff/webapp/app.py --server.headless true --server.port
 
 Open `http://localhost:8501`.
 
+## Workflow
+
+```mermaid
+flowchart LR
+    A[Upload data] --> B[Validate inputs]
+    B --> C[Run pipeline]
+    C --> D[Spatial QA]
+    D --> E[Explore map]
+    E --> F[View results]
+    F --> G[Export outputs]
+```
+
 ## Prepare your data
 
 Use the **Data** tab in the web interface to upload project files through the browser.
@@ -116,7 +128,6 @@ Reports missing data rather than generating fake values.
 | `docs/USER_MANUAL.md` | Setup and workflow guide |
 | `docs/DATA_REQUIREMENTS.md` | Required input data and formats |
 | `docs/WEB_INTERFACE.md` | Web app screenshots and navigation |
-| `docs/TROUBLESHOOTING.md` | Common problems and solutions |
 
 ## License
 
