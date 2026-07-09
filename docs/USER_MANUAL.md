@@ -2,7 +2,7 @@
 
 ## Setup
 
-Place input data under `data/raw/zip/`. Copy `config/example_project.yaml` to `config/project.yaml`.
+Place input data under `data/raw/zip/`. Edit `config/project.yaml` to set your study area parameters.
 
 ## Run the workflow
 
