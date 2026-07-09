@@ -9,7 +9,7 @@ the web interface.
 ```bash
 conda env create -f environment.yml
 conda activate geoproject
-streamlit run webapp/app.py --server.headless true
+streamlit run geoproject/webapp/app.py --server.headless true --server.port 8501
 ```
 
 Open `http://localhost:8501`.
@@ -49,8 +49,8 @@ The tool expects:
 After uploading, run the pipeline from the **Model** tab or the command line:
 
 ```bash
-python scripts/run_pipeline.py
-python scripts/lake_wq/run_compute_lake_wq.py
+python -m geoproject.cli.run_pipeline
+python -m geoproject.cli.run_lake_wq
 ```
 
 ## Parameters are adjustable in the browser

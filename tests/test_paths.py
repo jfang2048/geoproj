@@ -1,13 +1,13 @@
 """Test project-root path resolution."""
 from pathlib import Path
-from scripts.export_onlycode import ROOT
+from geoproject.io.paths import project_root
 
 
-def test_export_script_root_exists():
-    assert ROOT.exists()
-    assert ROOT.is_dir()
+def test_project_root_exists():
+    root = project_root()
+    assert root.exists()
+    assert root.is_dir()
 
 
-def test_onlycode_output_path():
-    onlycode = ROOT / "onlycode"
-    assert str(onlycode).endswith("onlycode")
+def test_project_root_is_path():
+    assert isinstance(project_root(), Path)
