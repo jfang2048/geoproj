@@ -1,126 +1,120 @@
-# Web GIS runoff screening tool
+# Post-fire Runoff Screening Tool
 
-A standalone Web GIS application for post-fire runoff screening over a burned catchment.
-
-The normal workflow is browser upload. Manual file placement is secondary and should be used only for recovery or controlled local setup.
-
-![Web GIS upload workflow](screenshots/webgis-upload-workflow.png)
-
-## What this tool does
-
-- Upload DEM, vector, raster, and rainfall files through the browser.
-- Validate CRS, geometry, raster metadata, rainfall columns, and archive safety before accepting files.
-- Store accepted files under an isolated `runs/<run_id>/inputs/` directory.
-- Normalize spatial inputs to EPSG:32632 for analysis.
-- Write browser display layers in EPSG:4326.
-- Run a documented screening-level SCS-CN event runoff calculation.
-- Write tables, map layers, QA files, a run report, and `run_manifest.json`.
-
-## What this tool does not do
-
-- It does not forecast discharge.
-- It does not replace field-validated burn severity, soil, or hydrologic calibration.
-- It does not fabricate production input data when required files are missing.
-- It does not use GitHub Actions or workflow files.
+A reproducible, screening-level GIS workflow for post-wildfire runoff sensitivity
+analysis. Provide your own input data, run the pipeline, and explore results through
+the web interface.
 
 ## Quick start
 
-### Backend
+```bash
+conda env create -f environment.yml
+conda activate geoproject
+streamlit run webapp/app.py --server.headless true
+```
 
-Use Python 3.11 or newer with GDAL-compatible wheels or a conda environment.
+Open `http://localhost:8501`.
+
+## Prepare your data
+
+Place input files under `data/raw/zip/` in your project directory. The tool expects:
+
+| Dataset | Accepted formats | Notes |
+|---|---|---|
+| DEM | `.zip` (GeoTIFF or IMG inside) | Required for catchment delineation and hydrology |
+| Fire perimeter | `.zip`, `.gpkg`, `.shp` | Official burned area polygon |
+| Sentinel-2 L2A | `.SAFE.zip` | Must be L2A (MSIL2A), not L1C |
+| Land cover | `.zip`, `.gpkg` | Vector land cover map |
+| Soil / HSG | `.tif`, `.zip`, `.csv` | Hydrologic soil group or texture data |
+| Rainfall | `.zip`, `.csv` | Hourly or daily precipitation time series |
+
+## Upload data through the web interface
+
+1. Launch the web app and go to the **Data** tab.
+
+![Data page](screenshots/02_data.png)
+
+2. Select a data category from the dropdown.
+
+3. Choose files from your computer. The tool validates file extensions per category.
+
+4. Files are saved into `data/raw/zip/`. Existing files are never overwritten.
+
+5. Use the **Required files** subtab to check what is present.
+
+6. The **Detected products** subtab shows recognised Sentinel-2 scenes with sensing dates.
+
+After uploading, run the pipeline from the **Model** tab or the command line:
 
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[test]'
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+python scripts/run_pipeline.py
+python scripts/lake_wq/run_compute_lake_wq.py
 ```
 
-Health check:
+## Parameters are adjustable in the browser
 
-```text
-http://127.0.0.1:8000/api/health
-```
+The Explorer tab lets you change SCS-CN initial abstraction ratio, burn severity
+CN adjustments, and footprint scenario with sliders. A live sensitivity preview
+chart updates immediately. No need to re-run the pipeline. Presets can be saved
+and exported to the project configuration.
 
-### Frontend
+## Web interface
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### Overview
 
-Open:
+![Overview](screenshots/01_overview.png)
 
-```text
-http://127.0.0.1:5173
-```
+Landing page with metric cards and scientific guardrails.
 
-The Vite development server proxies `/api` requests to `http://127.0.0.1:8000`.
+### Data
 
-## Browser workflow
+![Data page](screenshots/02_data.png)
 
-1. Create or select a run.
-2. Upload each required file in **Upload data**.
-3. Check **Validation status**.
-4. Run **Run preprocessing**.
-5. Run **Run runoff model**.
-6. Inspect generated layers in **Map viewer**.
-7. Download outputs and read the run report.
+Upload files and check which inputs are present.
 
-Required production inputs:
+### Explorer — Map
 
-- DEM raster
-- fire perimeter or burned area
-- burn severity
-- land cover
-- hydrologic soil group
-- rainfall event CSV
+![Explorer map](screenshots/03_explorer_map.png)
 
-HSG may be supplied by an explicit per-run fallback only when the user chooses it. The chosen fallback is recorded in the manifest and report.
+Interactive pydeck map with toggleable vector layers. A status line shows which
+files are loaded and which are missing. The basemap always renders.
 
-## Runtime storage
+### Explorer — Parameters
 
-Every run writes:
+![Explorer parameters](screenshots/04_explorer_params.png)
 
-```text
-runs/<run_id>/
-  inputs/
-  normalized/
-  outputs/
-  logs/
-  reports/
-  run_manifest.json
-```
+Adjust SCS-CN parameters with sliders. The preview chart updates instantly.
 
-`run_manifest.json` records input filenames, checksums, CRS, raster resolution, bounds, NoData, selected parameters, generated outputs, output checksums, warnings, and fatal errors.
+### Results — Runoff and WEPPcloud
 
-## Repository layout
+![Results](screenshots/05_results.png)
 
-```text
-backend/      FastAPI application and GIS processing services
-frontend/     React + Vite browser application with Leaflet map
-docs/         User and operator documentation
-sample_data/  Small sample-data generator for local checks
-tests/        Pytest tests for backend validation and model logic
-runs/         Local run storage; generated at runtime
-```
+Runoff delta tables, event scatter and CDF charts, burn footprint bar chart,
+WEPPcloud sediment benchmark.
 
-## Local tests
+### Results — Lake WQ
 
-```bash
-cd backend
-source .venv/bin/activate
-cd ..
-pytest
-```
+![Lake WQ](screenshots/06_lake_wq.png)
 
-Raster tests require `rasterio`.
+Lake water-quality closure status. Shows which events have Sentinel-2 coverage.
+Reports missing data rather than generating fake values.
+
+## Scientific guardrails
+
+- All runoff outputs are screening-level, uncalibrated scenario estimates.
+- dNBR is a remote-sensing burn-severity proxy, not field soil burn severity.
+- WEPPcloud is an independent benchmark, not validation of the local SCS-CN model.
+- Lake water-quality indices (NDTI, NDCI) are screening-level optical proxies.
+- The tool uses local input files only.
 
 ## Documentation
 
-- `docs/USER_MANUAL.md`: browser workflow
-- `docs/DATA_REQUIREMENTS.md`: required files, formats, CRS rules, CSV columns
-- `docs/OUTPUTS.md`: output files, units, interpretation limits
-- `docs/RUNBOOK.md`: troubleshooting and recovery
+| Document | Purpose |
+|---|---|
+| `docs/USER_MANUAL.md` | Setup and workflow guide |
+| `docs/DATA_REQUIREMENTS.md` | Required input data and formats |
+| `docs/WEB_INTERFACE.md` | Web app screenshots and navigation |
+| `docs/TROUBLESHOOTING.md` | Common problems and solutions |
+
+## License
+
+GPLv3. See [LICENSE](LICENSE).
