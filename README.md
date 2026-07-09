@@ -52,6 +52,12 @@ python scripts/lake_wq/run_compute_lake_wq.py
 
 ## Web interface
 
+**Parameters are adjustable directly in the browser.** The Explorer tab lets you
+change SCS-CN initial abstraction ratio, burn severity CN adjustments, and footprint
+scenario with sliders. A live sensitivity preview chart updates immediately —
+no re-running the pipeline required. Presets can be saved and exported to the project
+configuration.
+
 ### Overview
 
 ![Overview](screenshots/01_overview.png)
@@ -78,9 +84,10 @@ files are loaded and which are missing. The basemap always renders even without 
 
 ![Explorer parameters](screenshots/04_explorer_params.png)
 
-Adjust SCS-CN parameters (initial abstraction ratio, burn severity CN adjustments,
-footprint scenario) and see a live sensitivity preview. Preview is in-memory only
-and does not overwrite pipeline outputs. Save presets or export to project config.
+Move the sliders and the preview chart updates instantly. No need to re-run the
+pipeline. Adjust initial abstraction ratio, burn severity CN adjustments, and
+footprint scenario. Preview is in-memory only — official outputs are never
+overwritten unless you explicitly export to the project config.
 
 ### Results — runoff and WEPPcloud
 
