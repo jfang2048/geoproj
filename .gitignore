@@ -1,9 +1,8 @@
 data/raw/*
 data/processed/*
-data/outputs/*
+outputs/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
-!data/outputs/.gitkeep
 
 *.SAFE
 *.SAFE.zip
@@ -25,11 +24,11 @@ data/outputs/*
 __pycache__/
 .pytest_cache/
 .streamlit/
-webapp/run_logs/
-webapp/upload_manifest.csv
-webapp/current_parameters.yaml
+postfire_runoff/frontend/run_logs/
+postfire_runoff/frontend/upload_manifest.csv
+postfire_runoff/frontend/current_parameters.yaml
 
-# Local Web GIS runtime and build artifacts
+# Local runtime and build artifacts
 runs/
 .venv/
 backend/.venv/

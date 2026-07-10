@@ -1,34 +1,12 @@
-# Project path configuration — single source of truth for directory layout
-# Used by pipeline_utils.get_path() for resolving all project paths.
-#
-# Convention: outputs/ replaces the old results/ directory.
-# QA metadata lives under qa/, not under outputs/metadata/.
-
-project_root: .
-
+# Canonical runtime layout. Paths are relative to the repository root.
 data:
   raw: data/raw
-  interim: data/interim
   processed: data/processed
-  reference: data/reference
-
 outputs:
-  maps: outputs/maps
-  figures: outputs/figures
+  root: outputs
   tables: outputs/tables
   models: outputs/models
   weppcloud: outputs/models/weppcloud
-  automation: outputs/automation
-
-qa:
-  evidence: qa/evidence
-  audit: qa/audit
-  spatial: qa/spatial
-
-docs: docs
-config: config
-scripts: scripts
-tests: tests
-projects: projects
-
-logs: outputs/automation
+config:
+  project: config/project.yaml
+  sample: config/sample.yaml

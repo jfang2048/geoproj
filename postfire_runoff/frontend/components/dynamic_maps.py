@@ -7,9 +7,10 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import rasterio
-from rasterio.warp import transform_bounds
+from rasterio.warp import transform_bounds, transform_geom
 
-from postfire_runoff.webapp.components.data_loaders import (
+from postfire_runoff.frontend.adapters import outlet_lonlat
+from postfire_runoff.frontend.components.data_loaders import (
     CATCHMENT, FIRE_PERIMETER, HYDROGRAPHY, LAKE_BOUNDARY,
     RUNOFF_UNITS_GPKG, DEM_STREAMS, BURN_RASTER, load_vector_safe,
 )
@@ -203,12 +204,14 @@ def runoff_units_layer(color_by: str = "cn_adjustment", visible: bool = True) ->
 
 
 def outlet_point_layer() -> dict | None:
-    """Create an outlet point layer from canonical coordinates."""
-    from pyproj import Transformer
+    """Create an outlet point layer from config, if available."""
     from shapely.geometry import Point
-    OUTLET_LON, OUTLET_LAT = 8.82375104, 45.91547405
-    pt = Point(OUTLET_LON, OUTLET_LAT)
-    gdf = gpd.GeoDataFrame([{"name": "Candidate Outlet"}], geometry=[pt], crs="EPSG:4326")
+    coords = outlet_lonlat()
+    if coords is None:
+        return None
+    lon, lat = coords
+    pt = Point(lon, lat)
+    gdf = gpd.GeoDataFrame([{"name": "Configured Outlet"}], geometry=[pt], crs="EPSG:4326")
     return {
         "name": "Outlet",
         "visible": True,

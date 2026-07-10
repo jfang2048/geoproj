@@ -1,128 +1,58 @@
 project:
   name: lake_varese_monte_martica_post_fire_runoff
   crs_working: EPSG:32632
-  crs_strategy: WGS84_UTM_zone_32N_metric_working_crs_with_WGS84_exports_for_WEPPcloud_outlet
   study_area_label: Lake Varese / Monte Martica
   fire_year: 2019
-  fire_name: Monte Martica wildfire
-  primary_model: simplified_event_runoff
-  benchmark_model: WEPPcloud-EU
-aoi:
-  mode: fire_perimeter_buffer_if_available
-  fallback_bbox_wgs84:
-    west: 8.75
-    south: 45.78
-    east: 8.9
-    north: 45.9
-  buffer_m: 5000
-  provisional_note: Fallback processing mask only; not a final scientific study boundary.
+  primary_model: simplified_event_scs_cn_runoff
+  benchmark_model: user_exported_weppcloud
+  scientific_scope: screening-level uncalibrated event runoff; no observed discharge calibration
 reference_points:
-  lake_varese_center_wgs84:
-    lon: 8.74
-    lat: 45.82
-  monte_martica_center_wgs84:
-    lon: 8.84
-    lat: 45.88
-  provisional_outlet_wgs84:
-    lon: 8.775
-    lat: 45.805
-sentinel2:
-  collection: SENTINEL-2
-  product_type: L2A
-  max_cloud_cover_percent: 30
-  pre_fire_primary:
-    start: '2018-12-01'
-    end: '2019-01-02'
-  pre_fire_fallback:
-    start: '2018-10-01'
-    end: '2019-01-02'
-  post_fire_primary:
-    start: '2019-01-08'
-    end: '2019-03-31'
-  post_fire_fallback:
-    start: '2019-01-08'
-    end: '2019-06-30'
-  required_bands:
-  - B04
-  - B08
-  - B11
-  - B12
-  - SCL
-  nbr_working_resolution_m: 20
+  lake_varese_center_wgs84: {lon: 8.74, lat: 45.82}
+  monte_martica_center_wgs84: {lon: 8.84, lat: 45.88}
+  provisional_outlet_wgs84: {lon: 8.775, lat: 45.805}
+inputs:
+  # Map these logical inputs to real local files before running the case profile.
+  catchment_boundary:
+  fire_perimeter:
+  burn_severity:
+  land_cover:
+  hsg:
+  rainfall_events:
+  lake_boundary:
+  lake_pre_event_imagery:
+  lake_post_event_imagery:
+  weppcloud_export:
+processing:
+  burn_raster_resolution_m: 30
+landcover:
+  column: landcover_class
+soil:
+  hsg_column: hsg
 burn_classification:
+  column: burn_class
   nodata: 255
-  class_codes:
-    unburned: 0
-    low: 1
-    moderate: 2
-    high: 3
+  class_codes: {unburned: 0, low: 1, moderate: 2, high: 3}
   dnbr_thresholds:
-    unburned_max: 0.1
+    unburned_max: 0.10
     low_max: 0.27
     moderate_max: 0.66
     high_min: 0.66
-  threshold_note: Literature-standard dNBR screening thresholds; proxy only, not field-validated
-    soil burn severity.
-dem:
-  preferred_local_paths:
-  - DTM5_RL/DTM5_RL.img
-  - lombardia_dtm/
-  stream_threshold_cells: 1000
-  fallback_resolution_m: 100
-  synthetic_fallback_allowed: false
-  synthetic_fallback_note: Disabled for production use. Upload a DEM through the Web GIS application.
-landcover:
-  simplified_classes:
-  - forest
-  - shrub
-  - grassland
-  - agriculture
-  - urban
-  - bare_soil
-  - water
-  - other
-  fallback_note: Disabled for production use. Upload land cover through the Web GIS application.
-soil:
-  fallback_hydrologic_soil_group: null
-  fallback_note: No silent HSG fallback. Upload HSG or choose an explicit per-run fallback in the Web GIS application.
-weather:
-  event_start: '2019-01-01'
-  event_end: '2020-12-31'
-  rain_day_threshold_mm: 1.0
-  dry_gap_days: 1
-  design_events_when_station_data_missing:
-  - event_id: DESIGN_2019_02_01
-    start_date: '2019-02-01'
-    end_date: '2019-02-01'
-    total_precip_mm: 20.0
-  - event_id: DESIGN_2019_04_12
-    start_date: '2019-04-12'
-    end_date: '2019-04-13'
-    total_precip_mm: 42.0
-  - event_id: DESIGN_2019_11_03
-    start_date: '2019-11-03'
-    end_date: '2019-11-04'
-    total_precip_mm: 65.0
+  threshold_note: dNBR thresholds are a proxy only and are not field soil-burn severity.
 runoff:
-  model: simplified_scs_cn_screening
-  antecedent_moisture: normal
-  baseline_curve_numbers:
-    forest: 60
-    shrub: 65
-    grassland: 69
-    agriculture: 75
-    urban: 88
-    bare_soil: 82
-    water: 98
-    other: 74
-  burn_curve_number_adjustment:
-    '0': 0
-    '1': 4
-    '2': 8
-    '3': 12
-  sensitivity:
-    burn_thresholds: true
-    soil_grouping: true
-    wetness_rule: true
-  scientific_note: Screening model for relative runoff change; not a calibrated hydrologic
-    forecast.
+  initial_abstraction_ratio: 0.20
+  antecedent_moisture: AMC-II
+  hydrologic_condition_note: screening lookup table values; document local substitutions before case use
+  burn_curve_number_adjustment: {0: 0, 1: 4, 2: 8, 3: 12}
+  cn2_lookup:
+    forest: {A: 30, B: 55, C: 70, D: 77}
+    shrub: {A: 35, B: 56, C: 70, D: 77}
+    grassland: {A: 39, B: 61, C: 74, D: 80}
+    agriculture: {A: 67, B: 78, C: 85, D: 89}
+    urban: {A: 77, B: 85, C: 90, D: 92}
+    bare_soil: {A: 77, B: 86, C: 91, D: 94}
+    water: {A: 98, B: 98, C: 98, D: 98}
+    other: {A: 49, B: 69, C: 79, D: 84}
+limitations:
+  - Soil HSG must be supplied; there is no silent fallback.
+  - A catchment boundary is required unless a reviewed DEM/outlet delineation workflow is added.
+  - WEPPcloud results are imported from user exports and are contextual only.

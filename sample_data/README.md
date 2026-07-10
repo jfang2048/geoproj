@@ -1,19 +1,10 @@
-# Sample data
+# Synthetic sample data
 
-This directory is reserved for small local sample datasets and generators.
-Sample data are for testing the upload workflow only. Production runs must use user-supplied GIS and rainfall files uploaded through the browser.
-
-Run the generator after installing backend dependencies:
+Run:
 
 ```bash
 python sample_data/create_sample_data.py
+python -m postfire_runoff.cli.run_pipeline --config config/sample.yaml --force
 ```
 
-The generator writes small files under `sample_data/generated/`:
-
-- `dem.tif`
-- `fire_perimeter.geojson`
-- `burn_severity.geojson`
-- `land_cover.geojson`
-- `hydrologic_soil_group.geojson`
-- `rainfall_events.csv`
+The generator creates a small synthetic EPSG:32632 catchment, contextual fire polygon, burn-severity classes, two land-cover classes, two HSG classes, and two rainfall events. It is for software verification only and is not a Monte Martica/Lake Varese result.

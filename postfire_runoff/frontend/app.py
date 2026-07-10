@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 WEBAPP_DIR = Path(__file__).resolve().parent
-ROOT = WEBAPP_DIR.parent.parent.parent  # repository root
+ROOT = WEBAPP_DIR.parent.parent  # repository root
 for p in [str(ROOT)]:
     if p not in sys.path:
         sys.path.insert(0, p)
@@ -27,36 +27,60 @@ st.set_page_config(
     layout="wide",
 )
 
-from postfire_runoff.webapp.components.style import inject as inject_css
+from postfire_runoff.frontend.components.style import inject as inject_css
 
-from postfire_runoff.webapp.components.data_loaders import (
+from postfire_runoff.frontend.components.data_loaders import (
     core_metrics, burn_class_table, load_csv_safe, load_vector_safe,
     RUNOFF_DELTA, RUNOFF_EVENTS, BURN_ENSEMBLE, BURN_AREA,
-    LAKE_ANOMALIES, LAKE_SELECTED, LAKE_CONTEXT,
+    WEPP_SUMMARY, LAKE_STATUS, LAKE_ANOMALIES, LAKE_SELECTED, LAKE_CONTEXT,
     CATCHMENT, FIRE_PERIMETER, HYDROGRAPHY, LAKE_BOUNDARY,
     RUNOFF_UNITS_GPKG, DEM_STREAMS, BURN_RASTER,
 )
-from postfire_runoff.webapp.components.dynamic_maps import (
+from postfire_runoff.frontend.components.dynamic_maps import (
     catchment_layer, fire_perimeter_layer, lake_layer,
     hydrography_layer, dem_streams_layer, runoff_units_layer,
     outlet_point_layer, burn_raster_overlay,
 )
-from postfire_runoff.webapp.components.dynamic_charts import (
+from postfire_runoff.frontend.components.dynamic_charts import (
     burn_footprint_runoff_chart, burn_footprint_area_chart,
     event_rainfall_scatter_chart, event_delta_cdf_chart,
     weppcloud_sediment_chart, lake_wq_status_figure, lake_wq_event_table,
 )
-from postfire_runoff.webapp.components.scs_preview import preview_metrics, preview_curve
-from postfire_runoff.webapp.components.validators import CATEGORY_RULES, validate_upload, accepted_extensions_for
-from postfire_runoff.webapp.components.upload_registry import record_upload, read_manifest
-from postfire_runoff.webapp.components.runner import available_commands, run_command
-from postfire_runoff.webapp.components.paths import (
+from postfire_runoff.frontend.components.scs_preview import preview_metrics, preview_curve
+from postfire_runoff.frontend.adapters import CATEGORY_RULES, accepted_extensions_for, outlet_lonlat, save_upload, validate_upload
+from postfire_runoff.frontend.components.upload_registry import record_upload, read_manifest
+from postfire_runoff.frontend.components.runner import available_commands, run_command
+from postfire_runoff.frontend.components.paths import (
     DATA_RAW_ZIP, WEPPCLOUD_DOWNLOAD, resolve_safe,
     REQUIRED_CORE, REQUIRED_WEPPCLOUD, REQUIRED_LAKE_WQ, REQUIRED_FIGURES,
-    WORKFLOW_PNG, TABLES, LATEX, WEBAPP, ROOT as P_ROOTS,
+    WORKFLOW_PNG, TABLES, WEBAPP, ROOT as P_ROOTS,
 )
 
 inject_css()
+
+
+def _fmt(value, pattern: str, suffix: str = "") -> str:
+    try:
+        if value is None or pd.isna(value):
+            return "N/A"
+        return f"{float(value):{pattern}}{suffix}"
+    except Exception:
+        return "N/A"
+
+
+def _fmt_int(value) -> str:
+    try:
+        if value is None or pd.isna(value):
+            return "N/A"
+        return str(int(value))
+    except Exception:
+        return "N/A"
+
+
+def _delta(value, pattern: str, suffix: str = "") -> str | None:
+    formatted = _fmt(value, pattern, suffix)
+    return None if formatted == "N/A" else formatted
+
 
 # ---------------------------------------------------------------------------
 # Session state init
@@ -92,22 +116,33 @@ if nav == "Overview":
     st.markdown("#### Project at a glance")
 
     r1 = st.columns(4)
-    r1[0].metric("Catchment", f"{metrics['catchment_area_ha']:.1f} ha")
-    r1[1].metric("Official fire perimeter", f"{metrics['fire_perimeter_ha']:.1f} ha")
-    r1[2].metric("Fire inside catchment", f"{metrics['fire_inside_catchment_ha']:.1f} ha", f"{metrics['fire_inside_pct']:.1f}%")
-    r1[3].metric("Rainfall events", metrics["rainfall_event_count"])
+    r1[0].metric("Catchment", _fmt(metrics.get("catchment_area_ha"), ".1f", " ha"))
+    r1[1].metric("Official fire perimeter", _fmt(metrics.get("fire_perimeter_ha"), ".1f", " ha"))
+    r1[2].metric("Fire inside catchment", _fmt(metrics.get("fire_inside_catchment_ha"), ".1f", " ha"), _delta(metrics.get("fire_inside_pct"), ".1f", "%"))
+    r1[3].metric("Rainfall events", _fmt_int(metrics.get("rainfall_event_count")))
 
     r2 = st.columns(4)
-    r2[0].metric("Conservative dNBR proxy", f"{metrics['conservative_burned_ha']:.1f} ha")
-    r2[1].metric("Max conservative delta Q", f"{metrics['conservative_max_dq_mm']:.3f} mm")
-    r2[2].metric("Upper-bound burned", f"{metrics['upper_bound_burned_ha']:.1f} ha")
-    r2[3].metric("Max upper-bound delta Q", f"{metrics['upper_bound_max_dq_mm']:.3f} mm")
+    r2[0].metric("Conservative dNBR proxy", _fmt(metrics.get("conservative_burned_ha"), ".1f", " ha"))
+    r2[1].metric("Max conservative delta Q", _fmt(metrics.get("conservative_max_dq_mm"), ".3f", " mm"))
+    r2[2].metric("Upper-bound burned", _fmt(metrics.get("upper_bound_burned_ha"), ".1f", " ha"))
+    r2[3].metric("Max upper-bound delta Q", _fmt(metrics.get("upper_bound_max_dq_mm"), ".3f", " mm"))
 
     r3 = st.columns(4)
-    r3[0].metric("WEPPcloud sediment", "293 to 653 t/yr", "+122.7%")
-    delta_vol = metrics.get("conservative_max_dq_mm", 0.282) * metrics.get("catchment_area_ha", 1311.76) * 10
-    r3[1].metric("Est. max delta volume", f"{delta_vol:.0f} m3")
-    r3[2].metric("WEPPcloud stream discharge", "2,124 to 2,125 mm/yr")
+    if metrics.get("wepp_available"):
+        sed_min = _fmt(metrics.get("wepp_sediment_min"), ".1f")
+        sed_max = _fmt(metrics.get("wepp_sediment_max"), ".1f")
+        runoff_min = _fmt(metrics.get("wepp_runoff_min"), ".1f")
+        runoff_max = _fmt(metrics.get("wepp_runoff_max"), ".1f")
+        r3[0].metric("WEPPcloud sediment", f"{sed_min} to {sed_max}")
+        r3[2].metric("WEPPcloud stream discharge", f"{runoff_min} to {runoff_max}")
+    else:
+        r3[0].metric("WEPPcloud sediment", "Unavailable")
+        r3[2].metric("WEPPcloud stream discharge", "Unavailable")
+    if metrics.get("conservative_max_dq_mm") is not None and metrics.get("catchment_area_ha") is not None:
+        delta_vol = float(metrics["conservative_max_dq_mm"]) * float(metrics["catchment_area_ha"]) * 10.0
+        r3[1].metric("Est. max delta volume", f"{delta_vol:.0f} m3")
+    else:
+        r3[1].metric("Est. max delta volume", "N/A")
     r3[3].metric("Lake WQ status", "Data-limited" if metrics.get("lake_wq_data_limited", True) else "Available")
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -151,18 +186,15 @@ elif nav == "Data":
 
         if uploaded:
             for uf in uploaded:
-                result = validate_upload(category, uf.name, uf.size if uf.size is not None else -1)
+                file_bytes = uf.getvalue()
+                result = save_upload(category, uf.name, file_bytes)
                 if not result.valid:
                     st.error(f"{uf.name}: {result.message}")
                     continue
-                dest = resolve_safe(target_dir, uf.name)
-                if dest.exists():
-                    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    stem, ext = dest.stem, dest.suffix
-                    dest = resolve_safe(target_dir, f"{stem}_{ts}{ext}")
-                dest.write_bytes(uf.getvalue())
+                dest = Path(result.saved_path)
                 record_upload(category=category, original_filename=uf.name, saved_path=dest,
-                              file_size_bytes=dest.stat().st_size)
+                              file_size_bytes=dest.stat().st_size, checksum=result.checksum,
+                              warnings="; ".join(result.warnings))
                 st.success(f"Saved: `{dest.relative_to(ROOT)}`")
 
     # -- Required files tab --
@@ -336,29 +368,42 @@ elif nav == "Explore":
                         line_width_min_pixels=1))
 
             if show_catchment:
-                add_polygon_layer(dp / "boundary/catchment_utm32.gpkg", "Catchment",
+                add_polygon_layer(CATCHMENT, "Catchment",
                                   [30, 60, 120, 220], [41, 80, 160, 60])
             if show_fire:
-                add_polygon_layer(dp / "fire_perimeter/monte_martica_fire_2019_utm32.gpkg", "Fire perimeter",
+                add_polygon_layer(FIRE_PERIMETER, "Fire perimeter",
                                   [217, 95, 14, 220], [217, 95, 14, 50])
             if show_lake:
-                add_polygon_layer(dp / "boundary/lake_varese_boundary.gpkg", "Lake boundary",
+                add_polygon_layer(LAKE_BOUNDARY, "Lake boundary",
                                   [43, 140, 190, 220], [43, 140, 190, 80])
             if show_hydro:
-                add_line_layer(dp / "hydrography/streams_lombardia_varese_utm32.gpkg", "Hydrography",
+                add_line_layer(HYDROGRAPHY, "Hydrography",
                                [49, 130, 189, 200])
             if show_streams:
-                add_line_layer(dp / "dem/streams_from_dem.gpkg", "DEM streams",
+                add_line_layer(DEM_STREAMS, "DEM streams",
                                [107, 174, 214, 200])
             if show_units:
-                add_polygon_layer(dp / "model_inputs/runoff_units.gpkg", "Response units",
+                add_polygon_layer(RUNOFF_UNITS_GPKG, "Response units",
                                   [80, 80, 80, 60], [180, 200, 230, 80], lw=1)
+            if show_burn_rast:
+                overlay = burn_raster_overlay()
+                if overlay:
+                    layers.append(pdk.Layer("GeoJsonLayer",
+                        data=overlay["data"], pickable=True, stroked=False, filled=True,
+                        get_fill_color="[properties.color[0], properties.color[1], properties.color[2], properties.color[3]]"))
+                    notes.append(f"Burn proxy overlay: {len(overlay['data'])} polygon(s)")
+                else:
+                    notes.append("Burn proxy overlay: file not found")
             if show_outlet:
-                layers.append(pdk.Layer("ScatterplotLayer",
-                    data=[{"lon": 8.8238, "lat": 45.9155}],
-                    get_position=["lon", "lat"], get_radius=150,
-                    get_color=[200, 50, 40, 240], pickable=True))
-                notes.append("Outlet: coordinate")
+                coords = outlet_lonlat(ROOT)
+                if coords is not None:
+                    layers.append(pdk.Layer("ScatterplotLayer",
+                        data=[{"lon": coords[0], "lat": coords[1]}],
+                        get_position=["lon", "lat"], get_radius=150,
+                        get_color=[200, 50, 40, 240], pickable=True))
+                    notes.append("Outlet: configured coordinate")
+                else:
+                    notes.append("Outlet: not configured")
 
             st.caption("  |  ".join(notes))
 
@@ -367,7 +412,7 @@ elif nav == "Explore":
                     data={"type": "FeatureCollection", "features": []}))
 
             center_lat, center_lon = 45.87, 8.82
-            feats, _ = load_geojson(dp / "boundary/catchment_utm32.gpkg", "")
+            feats, _ = load_geojson(CATCHMENT, "")
             if feats:
                 from shapely.geometry import shape
                 g = shape(feats[0]["geometry"])
@@ -413,8 +458,7 @@ elif nav == "Explore":
                                      ["conservative_dnbr", "relaxed_dnbr", "fire_perimeter_upper_bound"],
                                      index=["conservative_dnbr", "relaxed_dnbr", "fire_perimeter_upper_bound"].index(
                                          saved.get("burn_footprint_scenario", "conservative_dnbr")))
-            fp_factors = {"conservative_dnbr": 1.0, "relaxed_dnbr": 1.8, "fire_perimeter_upper_bound": 3.2}
-            factor = fp_factors[footprint]
+            factor = 1.0  # Footprint scenarios require recomputing spatial masks; do not scale CN increments.
 
             current = {"scs_lambda": lam, "cn_adjustment_low": cn_low, "cn_adjustment_moderate": cn_mod,
                        "cn_adjustment_high": cn_high, "burn_footprint_scenario": footprint}
@@ -506,10 +550,10 @@ elif nav == "Results":
         st.markdown("#### Runoff screening results")
         metrics = core_metrics()
         mc = st.columns(4)
-        mc[0].metric("Max conservative delta Q", f"{metrics['conservative_max_dq_mm']:.3f} mm")
-        mc[1].metric("Upper-bound delta Q", f"{metrics['upper_bound_max_dq_mm']:.3f} mm")
-        mc[2].metric("Conservative proxy area", f"{metrics['conservative_burned_ha']:.1f} ha")
-        mc[3].metric("Upper-bound area", f"{metrics['upper_bound_burned_ha']:.1f} ha")
+        mc[0].metric("Max conservative delta Q", _fmt(metrics.get("conservative_max_dq_mm"), ".3f", " mm"))
+        mc[1].metric("Upper-bound delta Q", _fmt(metrics.get("upper_bound_max_dq_mm"), ".3f", " mm"))
+        mc[2].metric("Conservative proxy area", _fmt(metrics.get("conservative_burned_ha"), ".1f", " ha"))
+        mc[3].metric("Upper-bound area", _fmt(metrics.get("upper_bound_burned_ha"), ".1f", " ha"))
 
         col_a, col_b = st.columns(2)
         with col_a:
@@ -534,118 +578,81 @@ elif nav == "Results":
     with tab_wepp:
         st.markdown("#### WEPPcloud benchmark")
         fig_w = weppcloud_sediment_chart()
-        st.plotly_chart(fig_w, width="stretch")
+        if fig_w:
+            st.plotly_chart(fig_w, width="stretch")
+            wepp_df = load_csv_safe(WEPP_SUMMARY)
+            if wepp_df is not None:
+                with st.expander("Normalized WEPPcloud export", expanded=False):
+                    st.dataframe(wepp_df, width="stretch", hide_index=True)
+        else:
+            st.info("WEPPcloud unavailable: configure and import a user-exported WEPPcloud results CSV.")
         st.info(
-            "WEPPcloud provides an independent process-model benchmark. "
-            "Sediment discharge increases 122.7% from 293.0 to 652.6 tonne/yr. "
-            "Stream discharge changes negligibly (2,124 to 2,125 mm/yr). "
-            "WEPPcloud is not validation of the local SCS-CN model."
+            "WEPPcloud is an external process-model comparison. Imported annual or period results "
+            "answer a different question from event-scale SCS-CN direct runoff and are not validation."
         )
 
     # -- Lake WQ tab --
     with tab_lake:
         st.markdown("#### Lake water-quality closure")
+        fig_lake = lake_wq_status_figure()
+        st.plotly_chart(fig_lake, width="stretch")
 
-        # Load availability table
-        avail_path = TABLES / "lake_wq_required_sentinel2_windows.csv"
-        req_path = TABLES / "lake_wq_event_image_availability.csv"
-        missing_path = TABLES / "lake_wq_missing_sentinel2_download_targets.csv"
-
+        status_df = load_csv_safe(LAKE_STATUS)
+        avail_path = TABLES / "lake_wq_event_image_availability.csv"
         avail_df = load_csv_safe(avail_path)
-        req_avail = load_csv_safe(req_path)
-        missing_df = load_csv_safe(missing_path)
 
-        # Compute status counts
-        n_events = 10
-        n_with_pre = 0
-        n_with_post = 0
-        n_usable = 0
-        if avail_df is not None:
-            n_with_pre = int((avail_df["pre_products_found"] > 0).sum())
-            n_with_post = int((avail_df["post_products_found"] > 0).sum())
-            n_usable = int((avail_df["usable_pair"] == "YES").sum())
+        n_events = len(avail_df) if avail_df is not None else 0
+        n_with_pre = int((avail_df["pre_products_found"] > 0).sum()) if avail_df is not None and "pre_products_found" in avail_df else 0
+        n_with_post = int((avail_df["post_products_found"] > 0).sum()) if avail_df is not None and "post_products_found" in avail_df else 0
+        n_usable = int((avail_df["usable_pair"].astype(str).str.upper() == "YES").sum()) if avail_df is not None and "usable_pair" in avail_df else 0
 
-        # Metric cards
         mc = st.columns(5)
-        mc[0].metric("Selected events", n_events)
-        mc[1].metric("Events with pre image", n_with_pre)
-        mc[2].metric("Events with post image", n_with_post)
-        mc[3].metric("Usable pre/post pairs", n_usable)
+        mc[0].metric("Selected events", _fmt_int(n_events) if n_events else "N/A")
+        mc[1].metric("Events with pre image", _fmt_int(n_with_pre))
+        mc[2].metric("Events with post image", _fmt_int(n_with_post))
+        mc[3].metric("Usable pre/post pairs", _fmt_int(n_usable))
         mc[4].metric("Status", "Data-limited" if n_usable == 0 else "Partial data")
 
-        # Status message
-        local_scenes = 9
-        archive_range = "2018-12-31 to 2020-11-25"
-        if n_usable == 0:
-            st.warning(
-                f"{local_scenes} local Sentinel-2 L2A SAFE products detected "
-                f"(archive range: {archive_range}). "
-                f"No complete pre/post event pair is available yet. "
-                f"{n_with_pre} event(s) have pre-window images but no matching post-window image. "
-                f"No numeric NDTI/NDCI anomalies are interpreted. Local Sentinel-2 L2A SAFE products are required for event windows."
-            )
+        if status_df is not None and "message" in status_df.columns:
+            st.warning(str(status_df["message"].iloc[0]))
+        else:
+            st.info("Run the optional lake WQ command after configuring real local pre/post Sentinel-2 inputs.")
 
-        # Availability table
         if avail_df is not None:
             st.markdown("**Event-image availability**")
-            display_cols = ["event_id", "event_start", "event_end", "delta_volume_m3",
-                           "pre_products_found", "post_products_found", "usable_pair", "status"]
-            avail_cols = [c for c in display_cols if c in avail_df.columns]
-            st.dataframe(avail_df[avail_cols], width="stretch", hide_index=True,
-                         column_config={
-                             "delta_volume_m3": st.column_config.NumberColumn("Delta V (m3)", format="%.1f"),
-                         })
+            st.dataframe(avail_df, width="stretch", hide_index=True)
 
-        # Detected products
         with st.expander("Detected local Sentinel-2 products", expanded=False):
-            from postfire_runoff.webapp.components.data_loaders import RAINFALL_EVENTS
             import re as _re
-            zip_dir = ROOT / "data/raw/zip"
-            prods = sorted(zip_dir.glob("*.SAFE.zip"))
+            zip_dir = ROOT / "data/raw"
+            prods = sorted(zip_dir.rglob("*.SAFE.zip"))
             if prods:
                 prod_rows = []
+                dates = []
                 for p in prods:
                     m = _re.search(r"MSIL2A_(\d{8})T", p.name)
                     d = f"{m.group(1)[:4]}-{m.group(1)[4:6]}-{m.group(1)[6:8]}" if m else ""
+                    if d:
+                        dates.append(d)
                     tile_m = _re.search(r"T(\d{2}[A-Z]{3})", p.name)
-                    tile = tile_m.group(1) if tile_m else ""
-                    sensor = p.name.split("_")[0]
-                    # Check which event window this matches
-                    matched = ""
-                    if req_avail is not None:
-                        matches = req_avail[(req_avail["product_name"] == p.name) & (req_avail["status"] == "MATCHED")]
-                        if len(matches) > 0:
-                            matched = ", ".join(matches["event_id"].unique())
                     prod_rows.append({
-                        "Sensing date": d, "Sensor": sensor, "Tile": tile,
-                        "Product": p.name[:75], "Size (MB)": round(p.stat().st_size / 1e6, 1),
-                        "Matched event": matched if matched else "--",
+                        "Sensing date": d,
+                        "Sensor": p.name.split("_")[0],
+                        "Tile": tile_m.group(1) if tile_m else "",
+                        "Product": p.name[:75],
+                        "Size (MB)": round(p.stat().st_size / 1e6, 1),
                     })
                 st.dataframe(prod_rows, width="stretch", hide_index=True)
+                if dates:
+                    st.caption(f"Archive range detected locally: {min(dates)} to {max(dates)}")
             else:
                 st.info("No local Sentinel-2 SAFE products found.")
 
-        # Remaining missing windows
-        if missing_df is not None and len(missing_df) > 0:
-            with st.expander(f"Remaining missing windows ({len(missing_df)} gaps)", expanded=False):
-                st.dataframe(missing_df, width="stretch", hide_index=True)
-                st.caption("Download additional Sentinel-2 L2A scenes from Copernicus Browser to fill these gaps.")
-
-        # Anomaly table
         anomalies = load_csv_safe(LAKE_ANOMALIES)
         if anomalies is not None:
             with st.expander("Anomaly table", expanded=False):
                 st.dataframe(anomalies, width="stretch", hide_index=True)
-                flags = set(anomalies["quality_flag"].dropna()) if "quality_flag" in anomalies.columns else set()
-                if "MISSING_LOCAL_IMAGE" in flags:
-                    st.caption("All anomaly rows are MISSING_LOCAL_IMAGE. No numeric NDTI/NDCI values are interpreted.")
-
-        # ARPA context
-        context = load_csv_safe(LAKE_CONTEXT)
-        if context is not None:
-            with st.expander("ARPA lake analytical context", expanded=False):
-                st.dataframe(context, width="stretch", hide_index=True)
-                st.caption("ARPA data are context only. No correlation, calibration, or causal attribution.")
+                st.caption("Numeric NDTI/NDCI anomalies are shown only when valid pre/post imagery exists.")
 
     # -- Tables tab --
     with tab_tables:
@@ -653,10 +660,10 @@ elif nav == "Results":
         table_paths = {
             "Runoff delta by event": RUNOFF_DELTA,
             "Runoff event summary": RUNOFF_EVENTS,
-            "Burn severity ensemble": BURN_ENSEMBLE,
-            "Lake selected events": LAKE_SELECTED,
-            "Lake WQ anomalies": LAKE_ANOMALIES,
-            "Lake WQ analytical context": LAKE_CONTEXT,
+            "Burn severity area": BURN_AREA,
+            "WEPPcloud summary": WEPP_SUMMARY,
+            "Lake WQ status": LAKE_STATUS,
+            "Lake image availability": LAKE_SELECTED,
         }
         selected_table = st.selectbox("Select table", list(table_paths.keys()))
         path = table_paths[selected_table]
@@ -672,7 +679,6 @@ elif nav == "Results":
 # ---------------------------------------------------------------------------
 st.markdown("---")
 st.caption(
-    "GeoProject  |  Screening-level results  |  Local-data workflow"
-    "Screening-level results  |  Local-data workflow  |  "
+    "GeoProject  |  Screening-level results  |  Local-data workflow  |  "
     "All results are screening-level, uncalibrated scenario estimates."
 )

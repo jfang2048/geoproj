@@ -1,0 +1,43 @@
+project_root: ..
+project:
+  name: synthetic_postfire_runoff_sample
+  crs_working: EPSG:32632
+  study_area_label: Synthetic verification catchment
+  scientific_scope: software verification only; not a case-study result
+inputs:
+  catchment_boundary: sample_data/generated/catchment.geojson
+  fire_perimeter: sample_data/generated/fire_perimeter.geojson
+  burn_severity: sample_data/generated/burn_severity.geojson
+  land_cover: sample_data/generated/land_cover.geojson
+  hsg: sample_data/generated/hydrologic_soil_group.geojson
+  rainfall_events: sample_data/generated/rainfall_events.csv
+processing:
+  burn_raster_resolution_m: 25
+landcover:
+  column: landcover_class
+soil:
+  hsg_column: hsg
+burn_classification:
+  column: burn_class
+  nodata: 255
+  class_codes:
+    unburned: 0
+    low: 1
+    moderate: 2
+    high: 3
+runoff:
+  initial_abstraction_ratio: 0.20
+  burn_curve_number_adjustment:
+    0: 0
+    1: 4
+    2: 8
+    3: 12
+  cn2_lookup:
+    forest: {A: 30, B: 55, C: 70, D: 77}
+    shrub: {A: 35, B: 56, C: 70, D: 77}
+    grassland: {A: 39, B: 61, C: 74, D: 80}
+    agriculture: {A: 67, B: 78, C: 85, D: 89}
+    urban: {A: 77, B: 85, C: 90, D: 92}
+    bare_soil: {A: 77, B: 86, C: 91, D: 94}
+    water: {A: 98, B: 98, C: 98, D: 98}
+    other: {A: 49, B: 69, C: 79, D: 84}

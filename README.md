@@ -1,133 +1,62 @@
 # Post-fire Runoff Screening Tool
 
-A reproducible, screening-level GIS workflow for post-wildfire runoff sensitivity
-analysis. Provide your own input data, run the pipeline, and explore results through
-the web interface.
+A compact Python/Streamlit tool for screening-level event runoff change in a wildfire-affected catchment. The reusable model combines a supplied catchment, contextual fire perimeter, burn-severity classes, land-cover classes, hydrologic soil groups, and rainfall events into response units, then applies one documented SCS-CN implementation. The Monte Martica/Lake Varese profile is a case-study configuration; the synthetic sample is only for software verification and is not a scientific result.
 
 ## Quick start
 
 ```bash
 conda env create -f environment.yml
 conda activate geoproject
+python sample_data/create_sample_data.py
+python -m postfire_runoff.cli.run_pipeline --config config/sample.yaml --force
 streamlit run postfire_runoff/frontend/app.py --server.headless true --server.port 8501
 ```
 
-Open `http://localhost:8501`.
+Open <http://127.0.0.1:8501>.
 
 ## Workflow
 
-```mermaid
-flowchart LR
-    A[Upload data] --> B[Validate inputs]
-    B --> C[Run pipeline]
-    C --> D[Spatial QA]
-    D --> E[Explore map]
-    E --> F[View results]
-    F --> G[Export outputs]
-```
-
-## Prepare your data
-
-Use the **Data** tab in the web interface to upload project files through the browser.
-Manual placement under `data/raw/zip/` is available as a fallback for advanced use.
-
-The tool expects:
-
-| Dataset | Accepted formats | Notes |
-|---|---|---|
-| DEM | `.zip` (GeoTIFF or IMG inside) | Required for catchment delineation and hydrology |
-| Fire perimeter | `.zip`, `.gpkg`, `.shp` | Official burned area polygon |
-| Sentinel-2 L2A | `.SAFE.zip` | Must be L2A (MSIL2A), not L1C |
-| Land cover | `.zip`, `.gpkg` | Vector land cover map |
-| Soil / HSG | `.tif`, `.zip`, `.csv` | Hydrologic soil group or texture data |
-| Rainfall | `.zip`, `.csv` | Hourly or daily precipitation time series |
-
-## Upload data through the web interface
-
-1. Launch the web app and go to the **Data** tab.
-
-![Data page](screenshots/02_data.png)
-
-2. Select a data category from the dropdown.
-
-3. Choose files from your computer. The tool validates file extensions per category.
-
-4. Files are saved into `data/raw/zip/`. Existing files are never overwritten.
-
-5. Use the **Required files** subtab to check what is present.
-
-6. The **Detected products** subtab shows recognised Sentinel-2 scenes with sensing dates.
-
-After uploading, run the pipeline from the **Model** tab or the command line:
+1. Prepare or upload input files listed in `config/project.yaml`.
+2. Run the core runoff pipeline.
+3. Inspect generated maps/tables in the Streamlit app.
+4. Optionally import a user-exported WEPPcloud CSV or run the lake WQ availability check when real local imagery exists.
 
 ```bash
-python -m postfire_runoff.cli.run_pipeline
-python -m postfire_runoff.cli.run_lake_wq
+python -m postfire_runoff.cli.run_pipeline --config config/project.yaml --force
+python -m postfire_runoff.cli.run_lake_wq --config config/project.yaml
 ```
 
-## Parameters are adjustable in the browser
+The sample loop writes canonical processed files under `data/processed/` and tables under `outputs/tables/`.
 
-The Explorer tab lets you change SCS-CN initial abstraction ratio, burn severity
-CN adjustments, and footprint scenario with sliders. A live sensitivity preview
-chart updates immediately. No need to re-run the pipeline. Presets can be saved
-and exported to the project configuration.
+## Input-to-output contract
 
-## Web interface
+`config/sample.yaml` and `config/project.yaml` map logical inputs to paths: catchment boundary, official fire perimeter, burn severity, land cover, HSG, rainfall events, optional lake inputs, and optional WEPPcloud export. Runtime outputs use:
 
-### Overview
+```text
+data/processed/
+outputs/tables/
+outputs/models/weppcloud/
+outputs/run_metadata.json
+```
 
-![Overview](screenshots/01_overview.png)
-
-Landing page with metric cards and scientific guardrails.
-
-### Data
-
-![Data page](screenshots/02_data.png)
-
-Upload files and check which inputs are present.
-
-### Explorer — Map
-
-![Explorer map](screenshots/03_explorer_map.png)
-
-Interactive pydeck map with toggleable vector layers. A status line shows which
-files are loaded and which are missing. The basemap always renders.
-
-### Explorer — Parameters
-
-![Explorer parameters](screenshots/04_explorer_params.png)
-
-Adjust SCS-CN parameters with sliders. The preview chart updates instantly.
-
-### Results — Runoff and WEPPcloud
-
-![Results](screenshots/05_results.png)
-
-Runoff delta tables, event scatter and CDF charts, burn footprint bar chart,
-WEPPcloud sediment benchmark.
-
-### Results — Lake WQ
-
-![Lake WQ](screenshots/06_lake_wq.png)
-
-Lake water-quality closure status. Shows which events have Sentinel-2 coverage.
-Reports missing data rather than generating fake values.
-
-## Scientific guardrails
-
-- All runoff outputs are screening-level, uncalibrated scenario estimates.
-- dNBR is a remote-sensing burn-severity proxy, not field soil burn severity.
-- WEPPcloud is an independent benchmark, not validation of the local SCS-CN model.
-- Lake water-quality indices (NDTI, NDCI) are screening-level optical proxies.
-- The tool uses local input files only.
+No `runs/` selector or deleted frontend/backend stack is required.
 
 ## Documentation
 
-| Document | Purpose |
-|---|---|
-| `docs/USER_MANUAL.md` | Setup and workflow guide |
-| `docs/DATA_REQUIREMENTS.md` | Required input data and formats |
-| `docs/WEB_INTERFACE.md` | Web app screenshots and navigation |
+- `docs/USER_MANUAL.md` — setup, UI tabs, upload, run order, and errors.
+- `docs/MODEL_METHOD.md` — response units, curve numbers, SCS-CN equations, WEPPcloud/lake boundaries.
+- `docs/ARCHITECTURE.md` — compact module/file architecture and schemas.
+- `docs/DATA_REQUIREMENTS.md` — supported formats, fields, CRS, units.
+- `docs/OUTPUTS.md` — generated files and table schemas.
+- `docs/WEB_INTERFACE.md` — Streamlit pages with existing screenshots.
+
+## Screening-level limitations
+
+- Outputs are uncalibrated scenario estimates, not observed discharge.
+- HSG and land-cover inputs must be supplied; there is no silent soil fallback.
+- dNBR or supplied burn classes are remote-sensing proxies, not field soil-burn severity.
+- WEPPcloud exports are contextual external model evidence, not SCS-CN validation.
+- Lake NDTI/NDCI summaries are unavailable unless valid local pre/post imagery is configured.
 
 ## License
 

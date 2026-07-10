@@ -1,54 +1,53 @@
 # User manual
 
-## Start
+## Setup
 
-1. Start the backend API.
-2. Start the frontend.
-3. Open the frontend URL in a browser.
+```bash
+conda env create -f environment.yml
+conda activate geoproject
+streamlit run postfire_runoff/frontend/app.py --server.headless true --server.port 8501
+```
 
-## Create or select a run
+For a complete demonstration run first:
 
-Use the **Project/run** panel. A run is an isolated workspace under `runs/<run_id>/`. Each run has its own inputs, normalized files, outputs, logs, reports, and manifest.
+```bash
+python sample_data/create_sample_data.py
+python -m postfire_runoff.cli.run_pipeline --config config/sample.yaml --force
+```
 
-## Upload data
+## Navigation
 
-Use **Upload data** for normal operation. Do not place files in `data/raw` for standard use.
+The Streamlit app has the fixed top navigation: **Overview**, **Data**, **Model**, **Explore**, and **Results**.
 
-For each file:
+### Overview
 
-1. Choose the data category.
-2. Select the file from your computer.
-3. Click **Upload and validate**.
-4. Read the validation result.
+Shows metric cards from generated outputs. Missing outputs appear as `N/A` or unavailable rather than fabricated case-study values.
 
-Rejected files are not accepted into the run input set. Accepted files are stored under `runs/<run_id>/inputs/<category>/` and recorded in the manifest.
+### Data
 
-## Validate inputs
+The **Upload files** tab stores supported local files. Categories are catchment boundary, fire perimeter, burn severity, land cover, soil/HSG, rainfall/weather, lake water quality, and WEPPcloud output. Supported extensions are intentionally narrow: GeoPackage/GeoJSON for vectors, GeoTIFF for burn rasters, and CSV for rainfall/WEPPcloud tables. Content validation checks readable files, CRS for GIS files, and required rainfall fields.
 
-Use **Validation status**. Required files show either **Accepted** or **Missing required file**. Warnings are shown when geometry repair, missing NoData, or other non-fatal issues are detected.
+The **Required files** tab shows the canonical processed outputs and optional WEPPcloud/lake status files. The **CRS status** tab states the CRS policy: process in EPSG:32632 and use EPSG:4326 only for web display/exchange. The **Upload manifest** tab lists browser uploads.
 
-## Run processing
+### Model
 
-Run the steps in order:
+**Run pipeline** calls `python -m postfire_runoff.cli.run_pipeline --force` against `config/project.yaml`. Configure the logical input paths before using it for a real case. **Run lake WQ compute** records unavailable status unless real local pre/post imagery and a lake boundary are configured. **Run minimal tests** runs the focused project tests.
 
-1. **Run preprocessing**: normalizes accepted spatial inputs to EPSG:32632, repairs invalid vector geometries when possible, checks raster alignment, writes display layers in EPSG:4326, and prepares rainfall events.
-2. **Run runoff model**: creates response units and runoff tables using SCS-CN event logic.
-3. **Write QA report**: writes or refreshes the run report.
+### Explore
 
-If HSG is missing, model processing stops unless you choose an explicit HSG fallback in the processing panel. The chosen fallback is recorded in the manifest.
+**Map** displays available catchment, fire perimeter, lake, hydrography, DEM-stream, response-unit, outlet, and burn-proxy layers. The basemap loads even when project layers are absent.
 
-## View map outputs
+**Parameters** previews SCS-CN sensitivity in memory. It uses the backend SCS-CN function and does not overwrite official output files. Footprint scenarios are labels for spatial recomputation; the preview does not scale CN increments by a footprint multiplier.
 
-The map opens with a basemap. Rendered layers appear only when files exist. Missing layers are listed with the reason they are missing.
+**Events** and **Burn footprint** show charts from generated CSVs when available.
 
-Available map layers include uploaded previews, catchment boundary, fire perimeter, burn severity, land cover, HSG, response units, runoff delta, water body, and hydrography when present.
+### Results
 
-Click features to inspect attributes. Use layer checkboxes to toggle rendered layers.
+**Runoff** shows event runoff deltas and tables from `outputs/tables/`. **WEPPcloud** is unavailable until a valid user-exported WEPPcloud CSV is imported. **Lake WQ** shows status and image availability; it does not emit numeric NDTI/NDCI anomalies without valid pre/post imagery. **Tables** displays generated CSVs.
 
-## Download outputs
+## Common errors
 
-Use **Download outputs**. The panel lists generated files only. If no outputs exist, run preprocessing and model calculation first.
-
-## Read the run report
-
-Use **Run report** after model calculation or QA report generation. The report states inputs, parameters, outputs, warnings, fatal errors, and interpretation limits.
+- `Required input file(s) missing`: fill `inputs.*` in the selected YAML config.
+- `missing CRS`: re-export the vector/raster with a declared CRS instead of assigning coordinates by assumption.
+- `no overlap with catchment`: verify all required layers cover the same area after reprojection to EPSG:32632.
+- Lake WQ exit code `2`: optional stage lacks real imagery; the core runoff run can still be complete.
