@@ -1,4 +1,4 @@
-# Canonical runtime layout. Paths are relative to the repository root.
+# Runtime layout. Paths are relative to the repository root.
 data:
   raw: data/raw
   processed: data/processed

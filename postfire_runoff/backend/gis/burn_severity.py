@@ -12,7 +12,7 @@ from rasterio.features import rasterize
 from rasterio.transform import from_origin
 from shapely.geometry import shape
 
-from postfire_runoff.backend.gis.normalize import SpatialInputError, canonicalize_polygons, read_vector, to_working_crs
+from postfire_runoff.backend.gis.normalize import SpatialInputError, normalize_polygons, read_vector, to_working_crs
 from postfire_runoff.backend.gis.crs import METRIC_CRS
 
 BURN_CLASS_LABELS = {
@@ -60,7 +60,7 @@ def load_burn_polygons(path: Path, column: str = "burn_class", working_crs: str 
     suffix = path.suffix.lower()
     if suffix in {".tif", ".tiff"}:
         return _burn_polygons_from_raster(path, working_crs)
-    gdf = canonicalize_polygons(to_working_crs(read_vector(path, "burn severity"), working_crs), "burn severity")
+    gdf = normalize_polygons(to_working_crs(read_vector(path, "burn severity"), working_crs), "burn severity")
     if column not in gdf.columns:
         candidates = [c for c in ("burn_class", "severity", "class", "dnbr_class") if c in gdf.columns]
         if not candidates:
@@ -101,7 +101,7 @@ def write_burn_raster(
     resolution_m: float = 30.0,
     nodata: int = 255,
 ) -> Path:
-    """Rasterize canonical burn polygons over the catchment extent."""
+    """Rasterize burn-class polygons over the catchment extent."""
     if resolution_m <= 0:
         raise ValueError("Raster resolution must be positive")
     bounds = catchment_gdf.total_bounds

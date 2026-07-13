@@ -9,12 +9,14 @@ inputs:
   fire_perimeter: sample_data/generated/fire_perimeter.geojson
   burn_severity: sample_data/generated/burn_severity.geojson
   land_cover: sample_data/generated/land_cover.geojson
-  hsg: sample_data/generated/hydrologic_soil_group.geojson
+  hsg: sample_data/generated/hsg.geojson
   rainfall_events: sample_data/generated/rainfall_events.csv
+  weppcloud_export:
 processing:
   burn_raster_resolution_m: 25
 landcover:
   column: landcover_class
+  mappings: {}
 soil:
   hsg_column: hsg
 burn_classification:

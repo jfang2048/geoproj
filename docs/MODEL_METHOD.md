@@ -1,33 +1,82 @@
 # Model method
 
-## Inputs and normalization
-
-The core model requires an explicit catchment boundary, official fire perimeter, burn-severity classes or a burn-class raster, land-cover polygons, hydrologic soil group polygons, and a rainfall event CSV. Vectors are read with their declared CRS, reprojected to EPSG:32632, and rejected if they are missing CRS, invalid, empty, unreadable, or non-overlapping. The official fire perimeter is contextual; it is not converted into measured burn severity.
-
-Rainfall is normalized once to `event_id`, `start_date`, `end_date`, and `rainfall_mm`. Supported aliases such as `total_precip_mm` are converted at input. Downstream code uses `rainfall_mm` only.
-
-## Response units
-
-Response units are produced by intersecting the catchment, land-cover layer, HSG layer, and burn-severity layer. Each unit stores land-cover class, HSG, burn class, area in square metres/hectares, baseline CN, burned CN, and CN adjustment. The pipeline records covered and uncovered catchment area in `outputs/run_metadata.json` and rejects double-counted units.
-
-## Curve numbers
-
-Land-cover labels are normalized to documented hydrologic classes: forest, shrub, grassland, agriculture, urban, bare soil, water, or other. HSG is normalized to A/B/C/D. Baseline AMC-II `CN2` is read from the two-dimensional lookup table in the selected config, with defaults adapted from common NRCS TR-55 hydrologic soil-cover examples. The selected hydrologic condition is a screening assumption and should be reviewed for local case use.
-
-Burn-severity increments are configurable scenario assumptions in `runoff.burn_curve_number_adjustment` (`0/1/2/3` classes). They are not labelled as universal NRCS standards. Invalid CN, rainfall, or lambda values are rejected; burned CN is capped at the documented project maximum of 98.
-
-## SCS-CN equations
-
-For response unit `i` and rainfall depth `P` in millimetres:
+## Runtime path
 
 ```text
-S_i = 25400 / CN_i - 254
-I_a,i = lambda * S_i
-Q_i = 0                                              when P <= I_a,i
-Q_i = (P - I_a,i)^2 / (P + (1 - lambda) * S_i)     when P > I_a,i
+input selection
+→ configuration
+→ GIS normalization
+→ response-unit construction
+→ SCS-CN calculation
+→ generated outputs
+→ Streamlit display
 ```
 
-Aggregation uses area `A_i` in square metres:
+The command-line pipeline and Streamlit **Run pipeline** button use the same backend path. Streamlit preview controls also call the backend SCS-CN implementation, but they do not overwrite generated outputs.
+
+## GIS normalization
+
+All spatial inputs must have a declared CRS. The pipeline reprojects vectors and rasters to the configured processing CRS, normally EPSG:32632. EPSG:4326 is used only for web maps and exchange files.
+
+The official fire perimeter is a context layer. It is not converted into burn severity.
+
+## Burn classes and response units
+
+Burn severity uses integer classes:
+
+| Code | Meaning |
+|---|---|
+| 0 | unburned |
+| 1 | low severity |
+| 2 | moderate severity |
+| 3 | high severity |
+| 255 | raster NoData |
+
+Vector burn polygons are clipped to the catchment. Polygons with the same burn class may be dissolved. Overlaps between different burn classes are rejected because they would double-count area. The catchment area outside burned class 1–3 polygons is assigned `burn_class = 0`, so the final burn layer covers the catchment once.
+
+Response units are the intersection of catchment, land cover, hydrologic soil group, and the completed burn layer. The output schema is:
+
+```text
+unit_id, landcover_class, hsg, burn_class, baseline_cn, burned_cn,
+cn_adjustment, area_m2, area_ha, geometry
+```
+
+The pipeline fails if response units materially omit catchment area or double-count area.
+
+## Land cover and HSG
+
+Land-cover labels are normalized with:
+
+```python
+str(value).strip().lower().replace("-", "_").replace(" ", "_")
+```
+
+Supported classes are `forest`, `shrub`, `grassland`, `agriculture`, `urban`, `bare_soil`, `water`, and `other`. Aliases include `open_water → water`, `built_up → urban`, `woodland → forest`, and `cropland → agriculture`. Unknown labels raise an error unless a project-specific mapping is added under `landcover.mappings` in the YAML configuration.
+
+Hydrologic soil groups must normalize to `A`, `B`, `C`, or `D`.
+
+## Curve numbers and burn adjustment
+
+Baseline AMC-II curve numbers come from the lookup table in the active YAML configuration. Burned curve numbers add the configured class increment:
+
+```text
+burned_cn = min(baseline_cn + burn_curve_number_adjustment[burn_class], 98)
+```
+
+Invalid curve numbers, rainfall depths, and initial abstraction ratios are rejected.
+
+## SCS-CN runoff calculation
+
+For rainfall depth `P` in millimetres and curve number `CN`:
+
+```text
+S  = 25400 / CN - 254
+Ia = lambda * S
+Q  = 0                                      when P <= Ia
+Q  = (P - Ia)^2 / (P + (1 - lambda) * S)   when P > Ia
+```
+
+For response-unit area `A_i`:
 
 ```text
 catchment runoff depth = sum(Q_i * A_i) / sum(A_i)
@@ -36,12 +85,10 @@ delta Q                = Q_burned - Q_baseline
 delta V                = V_burned - V_baseline
 ```
 
-## Burn severity and footprint scenarios
+## WEPPcloud comparison
 
-A supplied burn-class layer can contain classes 0 unburned, 1 low, 2 moderate, and 3 high. A dNBR workflow may be added only when valid pre/post Sentinel-2 L2A inputs are read end to end. The NoData code is 255. A footprint scenario must be recomputed spatially from its mask; it must not multiply CN increments by area factors.
+WEPPcloud is limited to a user-exported CSV import. Required columns are defined once in `postfire_runoff/backend/services/weppcloud.py` and are used by both upload checks and backend import. The normalized table is optional and is displayed as a contextual comparison, not as calibration or verification of event SCS-CN runoff.
 
-## WEPPcloud and lake WQ boundaries
+## Future work
 
-WEPPcloud is an external process-based model/interface. This repository imports user-exported WEPPcloud result CSVs and displays them as contextual comparison only. Annual or period WEPPcloud runoff/sediment and event SCS-CN direct runoff answer different questions.
-
-The optional lake stage records event-window availability. Numeric NDTI/NDCI proxy summaries require real local pre/post imagery and must not be interpreted as measured turbidity or chlorophyll concentration. No correlation, calibration, or causal claim is made without observations.
+A future water-quality extension could combine runoff-event selection with valid Sentinel-2 reflectance data and lake regions of interest. That work is not part of the executable product until numeric optical-index calculations and input handling are implemented end to end.

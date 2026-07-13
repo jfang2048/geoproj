@@ -1,8 +1,10 @@
-"""Core runoff pipeline for the canonical data/output contract."""
+"""Core runoff pipeline for event-scale post-fire SCS-CN screening."""
 from __future__ import annotations
 
 import json
+import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -12,12 +14,10 @@ import pandas as pd
 
 from postfire_runoff.backend.config import ConfigError, LoadedConfig, load_config
 from postfire_runoff.backend.gis.burn_severity import load_burn_polygons, write_burn_raster
-from postfire_runoff.backend.gis.normalize import SpatialInputError, read_vector, save_vector, to_working_crs, require_overlap
-from postfire_runoff.backend.gis.response_units import build_response_units, summarize_burn_area
+from postfire_runoff.backend.gis.normalize import SpatialInputError, read_vector, require_overlap, save_vector, to_working_crs
+from postfire_runoff.backend.gis.response_units import build_response_units, complete_burn_coverage, summarize_burn_area
 from postfire_runoff.backend.hydrology.curve_numbers import DEFAULT_CN2_TABLE
 from postfire_runoff.backend.hydrology.scs_cn import aggregate_response_unit_runoff, validate_initial_abstraction
-from postfire_runoff.backend.io.checksums import sha256_file
-from postfire_runoff.backend.io.manifest import add_error, add_input, add_output, add_warning, create_run_manifest, set_succeeded, write_manifest
 from postfire_runoff.backend.io.paths import ensure_runtime_dirs
 from postfire_runoff.backend.services.weppcloud import import_weppcloud_export
 
@@ -40,35 +40,29 @@ def run_pipeline(
     force: bool = False,
 ) -> PipelineResult:
     cfg = load_config(config_path, project_root)
-    dirs = ensure_runtime_dirs(cfg.root)
+    ensure_runtime_dirs(cfg.root)
     metadata_path = cfg.root / "outputs/run_metadata.json"
-    manifest = create_run_manifest(parameters={
-        "config": str(cfg.path),
-        "force": bool(force),
-        "working_crs": cfg.get("project", "crs_working", default="EPSG:32632"),
-    })
+    metadata = _new_metadata(cfg, force)
     outputs: dict[str, Path] = {}
 
     try:
-        result = _run_pipeline(cfg, manifest, force=force)
-        outputs.update(result)
-        set_succeeded(manifest)
+        outputs = _run_pipeline(cfg, metadata, force=force)
+        metadata["status"] = "succeeded"
+        metadata["output_paths"] = {name: _relative(cfg.root, path) for name, path in outputs.items()}
     except Exception as exc:
-        add_error(manifest, str(exc))
-        write_manifest(manifest, metadata_path)
+        metadata["status"] = "failed"
+        metadata["errors"].append(str(exc))
+        _write_metadata(metadata_path, metadata)
         raise PipelineError(str(exc)) from exc
 
-    for name, path in outputs.items():
-        add_output(manifest, name, path, _checksum_if_file(path))
-    write_manifest(manifest, metadata_path)
-    return PipelineResult(status=manifest["status"], metadata_path=metadata_path, outputs=outputs, warnings=manifest["warnings"])
+    _write_metadata(metadata_path, metadata)
+    return PipelineResult(status=metadata["status"], metadata_path=metadata_path, outputs=outputs, warnings=metadata["warnings"])
 
 
-def _run_pipeline(cfg: LoadedConfig, manifest: dict[str, Any], force: bool) -> dict[str, Path]:
+def _run_pipeline(cfg: LoadedConfig, metadata: dict[str, Any], force: bool) -> dict[str, Path]:
     working_crs = cfg.get("project", "crs_working", default="EPSG:32632")
     inputs = _required_inputs(cfg)
-    for name, path in inputs.items():
-        add_input(manifest, name, path, _checksum_if_file(path))
+    metadata["input_paths"] = {name: _relative(cfg.root, path) for name, path in inputs.items()}
 
     catchment = to_working_crs(read_vector(inputs["catchment_boundary"], "catchment boundary"), working_crs)
     fire = to_working_crs(read_vector(inputs["fire_perimeter"], "official fire perimeter"), working_crs)
@@ -92,68 +86,86 @@ def _run_pipeline(cfg: LoadedConfig, manifest: dict[str, Any], force: bool) -> d
 
     burn_adjustments = {int(k): float(v) for k, v in (cfg.get("runoff", "burn_curve_number_adjustment", default={0: 0, 1: 4, 2: 8, 3: 12}) or {}).items()}
     cn_lookup = cfg.get("runoff", "cn2_lookup", default=None) or DEFAULT_CN2_TABLE
+    landcover_aliases = cfg.get("landcover", "mappings", default={}) or {}
+
+    burn_coverage, burn_diagnostics = complete_burn_coverage(burn, catchment)
     units, diagnostics = build_response_units(
         catchment=catchment,
         landcover=landcover,
         hsg=hsg,
-        burn=burn,
+        burn=burn_coverage,
         landcover_column=cfg.get("landcover", "column", default="landcover_class"),
         hsg_column=cfg.get("soil", "hsg_column", default="hsg"),
         burn_adjustments=burn_adjustments,
         cn_lookup=cn_lookup,
+        landcover_aliases=landcover_aliases,
     )
-    if diagnostics.uncovered_area_m2 > max(1.0, diagnostics.catchment_area_m2 * 0.01):
-        add_warning(
-            manifest,
-            f"Response-unit inputs cover {diagnostics.covered_area_m2:.2f} m² of "
-            f"{diagnostics.catchment_area_m2:.2f} m² catchment; uncovered area is "
-            f"{diagnostics.uncovered_area_m2:.2f} m².",
-        )
-    manifest["spatial_metadata"] = {
+    metadata["spatial_coverage"] = {
         "catchment_area_m2": diagnostics.catchment_area_m2,
         "response_unit_covered_area_m2": diagnostics.covered_area_m2,
         "response_unit_uncovered_area_m2": diagnostics.uncovered_area_m2,
         "response_unit_overlap_error_m2": diagnostics.overlap_error_m2,
+        "burn_covered_area_m2": burn_diagnostics["burn_covered_area_m2"],
+        "burn_unburned_area_m2": burn_diagnostics["burn_unburned_area_m2"],
+        "burn_overlap_error_m2": burn_diagnostics["burn_overlap_error_m2"],
     }
 
     save_vector(units, paths["runoff_units_gpkg"])
-    units_csv = units.drop(columns="geometry").copy()
-    units_csv.to_csv(paths["runoff_units_csv"], index=False)
+    units.drop(columns="geometry").to_csv(paths["runoff_units_csv"], index=False)
 
     raster_resolution = float(cfg.get("processing", "burn_raster_resolution_m", default=30.0))
-    burn_raster = write_burn_raster(burn, catchment, paths["burn_raster"], resolution_m=raster_resolution)
+    burn_raster = write_burn_raster(
+        burn_coverage,
+        catchment,
+        paths["burn_raster"],
+        resolution_m=raster_resolution,
+        nodata=int(cfg.get("burn_classification", "nodata", default=255)),
+    )
 
     rainfall = normalize_rainfall(inputs["rainfall_events"])
     paths["rainfall_processed"].parent.mkdir(parents=True, exist_ok=True)
     rainfall.to_csv(paths["rainfall_processed"], index=False)
 
     lam = validate_initial_abstraction(float(cfg.get("runoff", "initial_abstraction_ratio", default=0.20)))
+    metadata["model_parameters"].update({
+        "initial_abstraction_ratio": lam,
+        "burn_curve_number_adjustment": burn_adjustments,
+        "burn_raster_resolution_m": raster_resolution,
+        "landcover_column": cfg.get("landcover", "column", default="landcover_class"),
+        "hsg_column": cfg.get("soil", "hsg_column", default="hsg"),
+        "burn_class_column": cfg.get("burn_classification", "column", default="burn_class"),
+    })
+
     event_summary = compute_event_summary(rainfall, units, lam)
     event_summary.to_csv(paths["runoff_event_summary"], index=False)
     delta_cols = [
-        "event_id", "start_date", "end_date", "rainfall_mm", "baseline_runoff_mm", "burned_runoff_mm",
-        "delta_runoff_mm", "baseline_volume_m3", "burned_volume_m3", "delta_volume_m3", "response_unit_area_m2",
+        "event_id",
+        "start_date",
+        "end_date",
+        "rainfall_mm",
+        "baseline_runoff_mm",
+        "burned_runoff_mm",
+        "delta_runoff_mm",
+        "baseline_volume_m3",
+        "burned_volume_m3",
+        "delta_volume_m3",
+        "response_unit_area_m2",
     ]
     event_summary[delta_cols].to_csv(paths["runoff_delta_by_event"], index=False)
 
     burn_area = summarize_burn_area(units, diagnostics.catchment_area_m2)
     burn_area.to_csv(paths["burn_area_summary"], index=False)
 
-    optional = manifest.setdefault("optional_stages", {})
     wepp_export = cfg.input_path("weppcloud_export", required=False)
     if wepp_export is not None and wepp_export.exists():
         try:
             import_weppcloud_export(wepp_export, paths["weppcloud_summary"])
-            optional["weppcloud"] = {"status": "available", "normalized_table": str(paths["weppcloud_summary"])}
         except Exception as exc:
-            optional["weppcloud"] = {"status": "invalid_export", "message": str(exc)}
-            add_warning(manifest, f"WEPPcloud export was not imported: {exc}")
-    else:
-        optional["weppcloud"] = {"status": "unavailable", "message": "No configured WEPPcloud user export."}
+            metadata["warnings"].append(f"WEPPcloud export was not imported: {exc}")
+    elif wepp_export is not None:
+        metadata["warnings"].append(f"Configured WEPPcloud export not found: {_relative(cfg.root, wepp_export)}")
 
-    optional.setdefault("lake_wq", {"status": "unavailable", "message": "Run optional lake stage when local pre/post imagery is configured."})
-
-    return {
+    outputs = {
         "catchment": catchment_out,
         "fire_perimeter": fire_out,
         "burn_raster": burn_raster,
@@ -163,8 +175,10 @@ def _run_pipeline(cfg: LoadedConfig, manifest: dict[str, Any], force: bool) -> d
         "runoff_event_summary": paths["runoff_event_summary"],
         "runoff_delta_by_event": paths["runoff_delta_by_event"],
         "burn_area_summary": paths["burn_area_summary"],
-        **({"weppcloud_summary": paths["weppcloud_summary"]} if paths["weppcloud_summary"].exists() else {}),
     }
+    if paths["weppcloud_summary"].exists():
+        outputs["weppcloud_summary"] = paths["weppcloud_summary"]
+    return outputs
 
 
 def _required_inputs(cfg: LoadedConfig) -> dict[str, Path]:
@@ -212,7 +226,11 @@ def normalize_rainfall(path: Path) -> pd.DataFrame:
         "event_start": "start_date",
         "event_end": "end_date",
     }
-    rename = {c: aliases[c] for c in df.columns if c in aliases and c != aliases[c]}
+    rename = {}
+    for column in df.columns:
+        lowered = column.lower()
+        if lowered in aliases and column != aliases[lowered]:
+            rename[column] = aliases[lowered]
     df = df.rename(columns=rename)
     required = ["event_id", "start_date", "end_date", "rainfall_mm"]
     missing = [c for c in required if c not in df.columns]
@@ -254,8 +272,30 @@ def compute_event_summary(rainfall: pd.DataFrame, units: gpd.GeoDataFrame, lam: 
     return pd.DataFrame(rows)
 
 
-def _checksum_if_file(path: Path) -> str:
+def _new_metadata(cfg: LoadedConfig, force: bool) -> dict[str, Any]:
+    working_crs = cfg.get("project", "crs_working", default="EPSG:32632")
+    return {
+        "run_id": uuid.uuid4().hex[:12],
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "status": "started",
+        "configuration_path": _relative(cfg.root, cfg.path),
+        "processing_crs": working_crs,
+        "input_paths": {},
+        "model_parameters": {"force": bool(force)},
+        "output_paths": {},
+        "spatial_coverage": {},
+        "warnings": [],
+        "errors": [],
+    }
+
+
+def _write_metadata(path: Path, metadata: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(metadata, indent=2, default=str))
+
+
+def _relative(root: Path, path: Path) -> str:
     try:
-        return sha256_file(path) if path.exists() and path.is_file() else ""
-    except Exception:
-        return ""
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(path)

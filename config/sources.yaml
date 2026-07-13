@@ -1,26 +1,19 @@
 sources:
   lombardia_geoportal_home:
     dataset_name: Regione Lombardia Geoportale
-    role: boundary_hydrography_fire_landcover_discovery
+    role: boundary_fire_landcover_discovery
     url: https://www.geoportale.regione.lombardia.it/
     access_method: HTTP service discovery
     license_or_terms: Verify on source page before reuse
-  copernicus_dataspace_stac:
-    dataset_name: Copernicus Data Space STAC
-    role: sentinel2_discovery
-    url: https://catalogue.dataspace.copernicus.eu/stac
-    search_url: https://catalogue.dataspace.copernicus.eu/stac/search
-    access_method: STAC API search; OData download requires credentials
-    license_or_terms: Copernicus Sentinel data terms
-  soilgrids_api:
-    dataset_name: ISRIC SoilGrids API
-    role: soil_fallback_discovery
-    url: https://rest.isric.org/soilgrids/v2.0/docs
-    access_method: HTTP API discovery
-    license_or_terms: ISRIC terms; verify before derived products
-  arpa_lombardia:
-    dataset_name: ARPA Lombardia meteorological and lake data
-    role: weather_lake_quality_discovery
-    url: https://www.arpalombardia.it/
-    access_method: Website/request workflow; likely manual for station data
-    license_or_terms: Verify ARPA data terms/request conditions
+  soilgrids:
+    dataset_name: SoilGrids hydrologic soil group derivative
+    role: hsg_context
+    url: https://soilgrids.org/
+    access_method: documented download/export
+    license_or_terms: Verify before reuse
+  local_weather:
+    dataset_name: Local rainfall gauge or gridded precipitation export
+    role: rainfall_event_table
+    url: ""
+    access_method: user-supplied CSV
+    license_or_terms: user responsibility

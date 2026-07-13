@@ -7,37 +7,28 @@ project:
   benchmark_model: user_exported_weppcloud
   scientific_scope: screening-level uncalibrated event runoff; no observed discharge calibration
 reference_points:
-  lake_varese_center_wgs84: {lon: 8.74, lat: 45.82}
   monte_martica_center_wgs84: {lon: 8.84, lat: 45.88}
   provisional_outlet_wgs84: {lon: 8.775, lat: 45.805}
 inputs:
-  # Map these logical inputs to real local files before running the case profile.
+  # Assign these paths with the Data page upload controls or edit them manually.
   catchment_boundary:
   fire_perimeter:
   burn_severity:
   land_cover:
   hsg:
   rainfall_events:
-  lake_boundary:
-  lake_pre_event_imagery:
-  lake_post_event_imagery:
   weppcloud_export:
 processing:
   burn_raster_resolution_m: 30
 landcover:
   column: landcover_class
+  mappings: {}
 soil:
   hsg_column: hsg
 burn_classification:
   column: burn_class
   nodata: 255
   class_codes: {unburned: 0, low: 1, moderate: 2, high: 3}
-  dnbr_thresholds:
-    unburned_max: 0.10
-    low_max: 0.27
-    moderate_max: 0.66
-    high_min: 0.66
-  threshold_note: dNBR thresholds are a proxy only and are not field soil-burn severity.
 runoff:
   initial_abstraction_ratio: 0.20
   antecedent_moisture: AMC-II
@@ -54,5 +45,5 @@ runoff:
     other: {A: 49, B: 69, C: 79, D: 84}
 limitations:
   - Soil HSG must be supplied; there is no silent fallback.
-  - A catchment boundary is required unless a reviewed DEM/outlet delineation workflow is added.
+  - A catchment boundary is required unless a reviewed delineation workflow is added.
   - WEPPcloud results are imported from user exports and are contextual only.

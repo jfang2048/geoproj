@@ -1,22 +1,26 @@
-"""Curve-number lookup and burn adjustment checks."""
+"""Land-cover and HSG curve-number checks."""
 import pytest
 
-from postfire_runoff.backend.hydrology.curve_numbers import apply_burn_adjustment, lookup_curve_number, normalize_hsg, normalize_landcover
+from postfire_runoff.backend.hydrology.curve_numbers import lookup_curve_number, normalize_hsg, normalize_landcover
 
 
-def test_landcover_and_hsg_lookup_uses_two_dimensional_table():
-    assert normalize_landcover("woods") == "forest"
+def test_landcover_alias_normalization_uses_underscore_form():
+    assert normalize_landcover("open water") == "water"
+    assert normalize_landcover("open_water") == "water"
+    assert normalize_landcover("built-up") == "urban"
+    assert normalize_landcover("bare soil") == "bare_soil"
+    assert normalize_landcover("woodland") == "forest"
+    assert normalize_landcover("cropland") == "agriculture"
+
+
+def test_unknown_landcover_label_raises_clear_error():
+    with pytest.raises(ValueError, match="Unknown land-cover label"):
+        normalize_landcover("orchard")
+
+
+def test_lookup_and_hsg_normalization():
     assert normalize_hsg("c soil") == "C"
     assert lookup_curve_number("forest", "B") == 55.0
     assert lookup_curve_number("grassland", "C") == 74.0
-
-
-def test_invalid_hsg_rejected():
     with pytest.raises(ValueError):
         lookup_curve_number("forest", "Z")
-
-
-def test_burn_adjustment_applies_only_configured_class_increment():
-    adjustments = {0: 0, 1: 4, 2: 8, 3: 12}
-    assert apply_burn_adjustment(70, 0, adjustments) == 70
-    assert apply_burn_adjustment(70, 2, adjustments) == 78

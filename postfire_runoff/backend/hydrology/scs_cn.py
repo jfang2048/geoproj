@@ -1,4 +1,4 @@
-"""Canonical SCS-CN runoff calculation.
+"""SCS-CN runoff calculation.
 
 For rainfall depth ``P`` in millimetres and curve number ``CN``::
 

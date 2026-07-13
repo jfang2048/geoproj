@@ -13,5 +13,4 @@ dependencies:
   - streamlit
   - pydeck
   - pyyaml
-  - pytest
   - pillow

@@ -35,8 +35,6 @@ def main() -> None:
     _write(gpd.GeoDataFrame([{"name": "synthetic_context_fire"}], geometry=[fire_geom], crs=CRS), "fire_perimeter.geojson")
 
     burn_records = [
-        {"burn_class": 0, "geometry": box(x0, y0, x0 + 1000.0, y0 + 250.0)},
-        {"burn_class": 0, "geometry": box(x0, y0 + 850.0, x0 + 1000.0, y0 + 1000.0)},
         {"burn_class": 1, "geometry": box(x0, y0 + 250.0, x0 + 250.0, y0 + 850.0)},
         {"burn_class": 2, "geometry": box(x0 + 250.0, y0 + 250.0, x0 + 650.0, y0 + 850.0)},
         {"burn_class": 3, "geometry": box(x0 + 650.0, y0 + 250.0, x0 + 1000.0, y0 + 850.0)},
@@ -53,7 +51,7 @@ def main() -> None:
         {"hsg": "B", "geometry": box(x0, y0, x0 + 1000.0, y0 + 500.0)},
         {"hsg": "C", "geometry": box(x0, y0 + 500.0, x0 + 1000.0, y0 + 1000.0)},
     ]
-    _write(gpd.GeoDataFrame(hsg_records, crs=CRS), "hydrologic_soil_group.geojson")
+    _write(gpd.GeoDataFrame(hsg_records, crs=CRS), "hsg.geojson")
 
     pd.DataFrame([
         {"event_id": "SYNTH_001", "start_date": "2020-10-01", "end_date": "2020-10-01", "rainfall_mm": 6.0},
@@ -62,7 +60,7 @@ def main() -> None:
 
     (OUT / "README.txt").write_text(
         "Synthetic verification dataset only. Not Monte Martica observations.\n"
-        "All vector layers use EPSG:32632 and are simple overlapping polygons.\n"
+        "All vector layers use EPSG:32632 and are simple polygons with a partial burned area.\n"
     )
     print(f"Wrote synthetic sample files to {OUT}")
 

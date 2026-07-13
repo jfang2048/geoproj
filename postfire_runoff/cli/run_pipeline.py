@@ -11,7 +11,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the post-fire SCS-CN runoff pipeline.")
     parser.add_argument("--config", default="config/project.yaml", help="Project YAML configuration path")
     parser.add_argument("--project-root", default=None, help="Repository/project root override")
-    parser.add_argument("--force", action="store_true", help="Overwrite canonical generated outputs")
+    parser.add_argument("--force", action="store_true", help="Overwrite generated outputs")
     return parser
 
 

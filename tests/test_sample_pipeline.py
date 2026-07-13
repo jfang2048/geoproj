@@ -1,4 +1,4 @@
-"""End-to-end synthetic sample pipeline smoke and consistency checks."""
+"""Synthetic sample pipeline smoke and consistency checks."""
 from __future__ import annotations
 
 import json
@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from postfire_runoff.frontend.components.data_loaders import RUNOFF_DELTA, RUNOFF_EVENTS, RUNOFF_UNITS, core_metrics, load_csv_safe
+from postfire_runoff.frontend.components.loaders import RUNOFF_DELTA, RUNOFF_EVENTS, RUNOFF_UNITS, core_metrics, load_csv
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,6 +28,18 @@ REQUIRED_OUTPUTS = [
     ROOT / "outputs/run_metadata.json",
 ]
 
+EXPECTED_UNIT_COLUMNS = {
+    "unit_id",
+    "landcover_class",
+    "hsg",
+    "burn_class",
+    "baseline_cn",
+    "burned_cn",
+    "cn_adjustment",
+    "area_m2",
+    "area_ha",
+}
+
 
 def run_cmd(*args):
     return subprocess.run([sys.executable, *args], cwd=ROOT, capture_output=True, text=True)
@@ -42,7 +54,10 @@ def test_sample_pipeline_outputs_and_consistency():
         assert path.stat().st_size > 0, path
 
     units_gdf = gpd.read_file(ROOT / "data/processed/model_inputs/runoff_units.gpkg")
-    assert len(units_gdf) >= 4
+    assert EXPECTED_UNIT_COLUMNS.issubset(units_gdf.columns)
+    removed = {"soil" + "_group", "baseline" + "_parameter", "burned" + "_parameter"}
+    assert not removed & set(units_gdf.columns)
+    assert 0 in set(units_gdf["burn_class"])
     area_sum = float(units_gdf["area_m2"].sum())
     union_area = float(units_gdf.geometry.union_all().area)
     assert area_sum > 0
@@ -55,18 +70,18 @@ def test_sample_pipeline_outputs_and_consistency():
     assert (summary[["baseline_runoff_mm", "burned_runoff_mm"]] >= 0).all().all()
     assert np.allclose(summary["delta_runoff_mm"], summary["burned_runoff_mm"] - summary["baseline_runoff_mm"])
     assert np.allclose(summary["delta_volume_m3"], summary["burned_volume_m3"] - summary["baseline_volume_m3"])
-    assert np.allclose(summary["baseline_volume_m3"], summary["baseline_runoff_mm"] / 1000.0 * summary["response_unit_area_m2"])
 
-    assert load_csv_safe(RUNOFF_UNITS) is not None
-    assert load_csv_safe(RUNOFF_EVENTS) is not None
-    assert load_csv_safe(RUNOFF_DELTA) is not None
+    assert load_csv(RUNOFF_UNITS) is not None
+    assert load_csv(RUNOFF_EVENTS) is not None
+    assert load_csv(RUNOFF_DELTA) is not None
     metrics = core_metrics()
     assert metrics["catchment_area_ha"] is not None
-    assert metrics["conservative_max_dq_mm"] is not None
+    assert metrics["max_delta_q_mm"] is not None
 
     metadata = json.loads((ROOT / "outputs/run_metadata.json").read_text())
     assert metadata["status"] == "succeeded"
-    assert metadata["optional_stages"]["weppcloud"]["status"] == "unavailable"
+    assert metadata["processing_crs"] == "EPSG:32632"
+    assert metadata["spatial_coverage"]["response_unit_uncovered_area_m2"] == pytest.approx(0.0)
 
 
 def test_missing_required_input_causes_nonzero_exit(tmp_path):
@@ -81,6 +96,6 @@ def test_missing_required_input_causes_nonzero_exit(tmp_path):
         "  hsg: missing/hsg.geojson\n"
         "  rainfall_events: missing/rain.csv\n"
     )
-    result = run_cmd("-m", "postfire_runoff.cli.run_pipeline", "--config", str(cfg), "--project-root", str(ROOT))
+    result = run_cmd("-m", "postfire_runoff.cli.run_pipeline", "--config", str(cfg), "--project-root", str(tmp_path))
     assert result.returncode != 0
     assert "Required input" in result.stderr

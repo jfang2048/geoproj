@@ -2,11 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
-
 import geopandas as gpd
-from shapely.geometry.base import BaseGeometry
-
 from postfire_runoff.backend.gis.crs import METRIC_CRS
 
 
@@ -56,7 +52,7 @@ def save_vector(gdf: gpd.GeoDataFrame, path: Path) -> Path:
     return path
 
 
-def canonicalize_polygons(gdf: gpd.GeoDataFrame, label: str) -> gpd.GeoDataFrame:
+def normalize_polygons(gdf: gpd.GeoDataFrame, label: str) -> gpd.GeoDataFrame:
     out = gdf.copy()
     out = out[out.geometry.notna() & ~out.geometry.is_empty].copy()
     if out.empty:

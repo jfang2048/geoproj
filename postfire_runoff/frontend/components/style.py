@@ -3,13 +3,11 @@ from __future__ import annotations
 
 CSS = """
 <style>
-/* ---- Global ---- */
 html, body, [class*="css"] {
     font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
     color: #1a1a2e;
 }
 
-/* ---- Metric cards ---- */
 [data-testid="stMetric"] {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -38,7 +36,6 @@ html, body, [class*="css"] {
     font-weight: 500;
 }
 
-/* ---- Section cards ---- */
 .section-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -48,7 +45,6 @@ html, body, [class*="css"] {
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 
-/* ---- Guardrail box ---- */
 .guardrail-box {
     background: #f8fafc;
     border-left: 3px solid #64748b;
@@ -64,7 +60,6 @@ html, body, [class*="css"] {
     padding-left: 1.25rem;
 }
 
-/* ---- Top navigation radio ---- */
 [data-testid="stRadio"] > div {
     gap: 0;
 }
@@ -82,26 +77,22 @@ html, body, [class*="css"] {
     background: #f1f5f9;
 }
 
-/* ---- Buttons ---- */
 [data-testid="baseButton-secondary"] {
     border-radius: 8px;
     font-weight: 500;
     font-size: 0.84rem;
 }
 
-/* ---- Expanders ---- */
 [data-testid="stExpander"] {
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     box-shadow: none;
 }
 
-/* ---- Tables ---- */
 [data-testid="stTable"], [data-testid="stDataFrame"] {
     border-radius: 8px;
 }
 
-/* ---- Warnings / info / success boxes ---- */
 [data-testid="stAlert"] {
     border-radius: 8px;
     font-size: 0.84rem;

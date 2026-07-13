@@ -1,63 +1,102 @@
 # Post-fire Runoff Screening Tool
 
-A compact Python/Streamlit tool for screening-level event runoff change in a wildfire-affected catchment. The reusable model combines a supplied catchment, contextual fire perimeter, burn-severity classes, land-cover classes, hydrologic soil groups, and rainfall events into response units, then applies one documented SCS-CN implementation. The Monte Martica/Lake Varese profile is a case-study configuration; the synthetic sample is only for software verification and is not a scientific result.
+A Python and Streamlit tool for event-scale post-fire runoff screening with the SCS-CN method. It combines configured spatial layers and rainfall events into response units, calculates baseline and burned curve numbers, and writes maps and tables for review.
 
-## Quick start
+The SCS-CN outputs are uncalibrated event-scale scenario estimates. Burn classes derived from remote sensing represent burn-severity proxies. WEPPcloud outputs are presented as an external comparison with different model and temporal scales.
+
+## Repository structure
+
+```text
+postfire_runoff/backend/      GIS normalization, response units, SCS-CN calculation, uploads
+postfire_runoff/cli/          command-line pipeline entry point
+postfire_runoff/frontend/     Streamlit app and page/components
+config/                       project and sample YAML configuration
+sample_data/                  synthetic data generator for verification
+docs/                         method and data requirements
+tests/                        focused regression tests
+```
+
+## Required inputs
+
+Configure these keys in `config/project.yaml` or assign them from the Streamlit **Data** page:
+
+| Input | Config key | Formats |
+|---|---|---|
+| Catchment boundary | `inputs.catchment_boundary` | GeoPackage, GeoJSON |
+| Official fire perimeter | `inputs.fire_perimeter` | GeoPackage, GeoJSON |
+| Burn severity | `inputs.burn_severity` | GeoPackage, GeoJSON, GeoTIFF |
+| Land cover | `inputs.land_cover` | GeoPackage, GeoJSON |
+| Hydrologic soil group | `inputs.hsg` | GeoPackage, GeoJSON |
+| Rainfall events | `inputs.rainfall_events` | CSV |
+| WEPPcloud export | `inputs.weppcloud_export` | optional CSV |
+
+Spatial processing uses EPSG:32632. Web display and geographic exchange use EPSG:4326.
+
+## Setup
 
 ```bash
 conda env create -f environment.yml
 conda activate geoproject
+```
+
+For tests in a development environment:
+
+```bash
+python -m pip install pytest
+```
+
+## Sample verification
+
+```bash
 python sample_data/create_sample_data.py
 python -m postfire_runoff.cli.run_pipeline --config config/sample.yaml --force
+```
+
+## Real project configuration
+
+1. Prepare the six required core inputs listed above.
+2. Start Streamlit and use **Data → Upload files** to save each file and assign the matching `inputs.*` key, or edit `config/project.yaml` manually with paths relative to the repository root.
+3. Review **Data → Required files** after a pipeline run.
+
+## Runtime commands
+
+Run the configured project from the command line:
+
+```bash
+python -m postfire_runoff.cli.run_pipeline --config config/project.yaml --force
+```
+
+Launch the Streamlit interface:
+
+```bash
 streamlit run postfire_runoff/frontend/app.py --server.headless true --server.port 8501
 ```
 
 Open <http://127.0.0.1:8501>.
 
-## Workflow
-
-1. Prepare or upload input files listed in `config/project.yaml`.
-2. Run the core runoff pipeline.
-3. Inspect generated maps/tables in the Streamlit app.
-4. Optionally import a user-exported WEPPcloud CSV or run the lake WQ availability check when real local imagery exists.
-
-```bash
-python -m postfire_runoff.cli.run_pipeline --config config/project.yaml --force
-python -m postfire_runoff.cli.run_lake_wq --config config/project.yaml
-```
-
-The sample loop writes canonical processed files under `data/processed/` and tables under `outputs/tables/`.
-
-## Input-to-output contract
-
-`config/sample.yaml` and `config/project.yaml` map logical inputs to paths: catchment boundary, official fire perimeter, burn severity, land cover, HSG, rainfall events, optional lake inputs, and optional WEPPcloud export. Runtime outputs use:
+## Generated outputs
 
 ```text
-data/processed/
-outputs/tables/
-outputs/models/weppcloud/
+data/processed/boundary/catchment_utm32.gpkg
+data/processed/fire_perimeter/fire_perimeter_utm32.gpkg
+data/processed/burn/burn_severity_proxy_uint8.tif
+data/processed/model_inputs/runoff_units.gpkg
+data/processed/weather/post_fire_rainfall_events.csv
+outputs/tables/runoff_units.csv
+outputs/tables/runoff_event_summary.csv
+outputs/tables/runoff_delta_by_event.csv
+outputs/tables/burn_severity_area_summary.csv
+outputs/tables/weppcloud_summary.csv        # only when a valid user export is configured
 outputs/run_metadata.json
 ```
 
-No `runs/` selector or deleted frontend/backend stack is required.
+`runoff_units.csv` contains `unit_id`, `landcover_class`, `hsg`, `burn_class`, `baseline_cn`, `burned_cn`, `cn_adjustment`, `area_m2`, and `area_ha`.
 
-## Documentation
+## Limitations
 
-- `docs/USER_MANUAL.md` — setup, UI tabs, upload, run order, and errors.
-- `docs/MODEL_METHOD.md` — response units, curve numbers, SCS-CN equations, WEPPcloud/lake boundaries.
-- `docs/ARCHITECTURE.md` — compact module/file architecture and schemas.
-- `docs/DATA_REQUIREMENTS.md` — supported formats, fields, CRS, units.
-- `docs/OUTPUTS.md` — generated files and table schemas.
-- `docs/WEB_INTERFACE.md` — Streamlit pages with existing screenshots.
+- The tool screens event-scale direct runoff depth and volume; it is not a calibrated discharge model.
+- Land-cover, HSG, burn severity, and rainfall inputs must be supplied by the user.
+- Burn-footprint scenarios require separate spatial burn masks and full reruns.
+- WEPPcloud is imported only from user-exported CSV files; this repository does not run WEPPcloud.
 
-## Screening-level limitations
-
-- Outputs are uncalibrated scenario estimates, not observed discharge.
-- HSG and land-cover inputs must be supplied; there is no silent soil fallback.
-- dNBR or supplied burn classes are remote-sensing proxies, not field soil-burn severity.
-- WEPPcloud exports are contextual external model evidence, not SCS-CN validation.
-- Lake NDTI/NDCI summaries are unavailable unless valid local pre/post imagery is configured.
-
-## License
-
-GPLv3. See [LICENSE](LICENSE).
+See `docs/MODEL_METHOD.md` and `docs/DATA_REQUIREMENTS.md` for details.
