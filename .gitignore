@@ -1,37 +1,44 @@
+# Runtime data and generated outputs
 data/raw/*
 data/processed/*
-outputs/*
+outputs/
+runs/
+sample_data/generated/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
-*.SAFE
-*.SAFE.zip
+# Local app state
+postfire_runoff/frontend/run_logs/
+postfire_runoff/frontend/upload_manifest.csv
+postfire_runoff/frontend/current_parameters.yaml
+.streamlit/
+.omx/
+
+# Python environments and caches
+.venv/
+backend/.venv/
+__pycache__/
+.pytest_cache/
+
+# Large local GIS/data files
+*.SAFE/
 *.tif
+*.tiff
 *.gpkg
 *.zip
 *.csv
 *.xlsx
 *.nc
-*.png
-!screenshots/*.png
-*.jpg
-*.jpeg
+
+# Local build/export artifacts
+*.log
+*.aux
 *.pdf
 *.pptx
-*.aux
-*.log
+*.png
+*.jpg
+*.jpeg
 
-__pycache__/
-.pytest_cache/
-.streamlit/
-postfire_runoff/frontend/run_logs/
-postfire_runoff/frontend/upload_manifest.csv
-postfire_runoff/frontend/current_parameters.yaml
-
-# Local runtime and build artifacts
-runs/
-.venv/
-backend/.venv/
+# Frontend build artifacts
 frontend/node_modules/
 frontend/dist/
-sample_data/generated/
