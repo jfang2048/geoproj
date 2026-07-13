@@ -4,6 +4,20 @@ A Python and Streamlit tool for event-scale post-fire runoff screening with the 
 
 The SCS-CN outputs are uncalibrated event-scale scenario estimates. Burn classes derived from remote sensing represent burn-severity proxies. WEPPcloud outputs are presented as an external comparison with different model and temporal scales.
 
+## Workflow at a glance
+
+```mermaid
+flowchart LR
+    A[Assign inputs<br/>config/project.yaml] --> B[Normalize GIS layers<br/>EPSG:32632]
+    B --> C[Build response units<br/>land cover + HSG + burn class]
+    C --> D[Calculate curve numbers<br/>baseline and burned]
+    D --> E[Run event SCS-CN<br/>runoff depth and volume]
+    E --> F[Write outputs<br/>CSV + GeoPackage + metadata]
+    F --> G[Review in Streamlit<br/>maps, charts, tables]
+
+    W[Optional WEPPcloud CSV] --> F
+```
+
 ## Repository structure
 
 ```text
